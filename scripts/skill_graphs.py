@@ -166,7 +166,7 @@ EMPIRICAL_EDUCATION = {
             "only when the abstract does not show the design or population. Answer with the "
             "counts per code and the number left unclear.",
             inputs={"criteria": out(G, "criteria")},
-            steps=24,
+            steps=40,
         ),
         node(
             G,
@@ -189,8 +189,8 @@ EMPIRICAL_EDUCATION = {
             "Extract study data",
             "lrg-note-only",
             "Node of the empirical-education screening graph. For each included paper "
-            "(library_list status included; library_get up to 8 at a time) save a library_note "
-            "in the review language: summary; method = design and analysis; data = participants "
+            "(library_list status included; library_get up to 8 at a time) save notes with "
+            "library_note, up to 10 papers per call, in the review language: summary; method = design and analysis; data = participants "
             "(number, age or level, country, setting) and period; findings = main results with "
             "direction and effect sizes or significance when reported; limitations; notes = "
             "intervention details and outcome measures. Write 'not reported' for missing "

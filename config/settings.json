@@ -12,11 +12,22 @@
     "graph_max_steps": 120,
     "knowledge_consolidate_on_finish": false
   },
+  "steps_per_paper": {
+    "search": 0.5,
+    "screen": 0.6,
+    "extract": 0.8,
+    "organize": 0.15,
+    "write": 0.4,
+    "review": 0.2
+  },
   "defaults": {
     "language": "en",
     "style": "apa",
     "review_type": "narrative",
     "target_papers": 25,
-    "sources": ["openalex", "arxiv"]
+    "sources": [
+      "openalex",
+      "arxiv"
+    ]
   }
 }

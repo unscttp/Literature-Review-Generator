@@ -6,7 +6,7 @@
 由你批准综述范围，然后程序检索 OpenAlex 和 arXiv、筛选结果、记录笔记、按主题组织文献、规划提纲、撰写综述并进行检查。
 界面和综述都支持英语和简体中文。
 
-它是 [Directed Growing Sheet](https://github.com/unscttp/directed-growing-sheet)（DGS）的示范应用。
+它是 [Directed Growing Sheet](https://github.com/unscttp/Directed-Growing-Sheet)（DGS）的示范应用。
 DGS 是一个以 JSON 为核心的 AI 智能体工作流引擎。综述可信与否的关键——每个阶段能做什么、什么时候需要你决定、
 哪些文献可以被引用——都由 DGS 强制执行，而不是靠提示模型“请遵守”。
 
@@ -28,7 +28,7 @@ DGS 是一个以 JSON 为核心的 AI 智能体工作流引擎。综述可信与
 以及所用模型的 **API Key**：Gemini、Claude、GPT 或 DeepSeek。用 Ollama 或 LM Studio 在自己电脑上运行的模型不需要密钥。
 
 ```bash
-git clone --recursive https://github.com/unscttp/literature-review-generator
+git clone --recursive https://github.com/unscttp/Literature-Review-Generator
 cd literature-review-generator
 python install.py
 ```
@@ -63,7 +63,11 @@ python run.py --demo
 4. **阅读与下载。** “综述正文”显示正在撰写的综述以及引用检查的结果。可以下载 Markdown 格式的正文和
    BibTeX 格式的参考文献。
 
-各阶段的步数上限加起来，每篇综述最多约 200 次模型调用；所需时间取决于模型及其速率限制。
+**需要多少次模型调用？** 每个阶段都有步数上限，并随计划纳入的文献数量增加
+（`config/workflow.json` 中的 `max_steps` 加上 `config/settings.json` 中的 `steps_per_paper`）。
+八个阶段最多约 130 次调用（5 篇文献）、185 次（25 篇）或 330 次（80 篇）；阶段每运行一张技能图，最多再增加 120 次。
+新建综述的表单会显示你这篇综述的数字。范围很广的领域会用掉大部分额度：加上技能图，大型综述可能接近 1000 次调用。
+请留意服务商的速率限制和费用；如果阶段的步数不够用，可以在上述两个文件中调高上限。
 运行在后台进行，关闭浏览器标签页也不影响。如果运行期间程序被停止，打开这篇综述并点击**继续**即可：
 已完成的步骤不会重复执行。
 
@@ -170,3 +174,7 @@ python -m unittest discover -s tests -t .
 | `lrg/demo.py` | 演示用的脚本模型 |
 | `web/` | 界面：纯 HTML、CSS 和 JavaScript；界面文字在 `web/i18n/` 中 |
 | `third_party/dgs` | Directed Growing Sheet（git 子模块） |
+
+## 许可证
+
+本项目采用 [Apache License 2.0](LICENSE) 许可证。

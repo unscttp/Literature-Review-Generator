@@ -15,7 +15,9 @@ actions that already completed from its journal instead of repeating them.
 
 from __future__ import annotations
 
+import copy
 import json
+import math
 import secrets
 import threading
 import time
@@ -166,8 +168,33 @@ class RunService:
 
     # -- files -------------------------------------------------------------------
 
-    def workflow(self) -> WorkflowDefinition:
-        return WorkflowDefinition.from_dict(self.workflow_document)
+    def step_limits(self, target_papers: int) -> dict[str, int]:
+        """Each stage's step limit for a review of ``target_papers`` papers: the
+        ``max_steps`` in config/workflow.json plus ``steps_per_paper`` per paper."""
+        per_paper = self.settings.get("steps_per_paper", {})
+        return {
+            node["id"]: node["react"]["max_steps"]
+            + math.ceil(per_paper.get(node["id"], 0) * target_papers)
+            for node in self.workflow_document["nodes"]
+        }
+
+    def call_budget(self, target_papers: int) -> dict:
+        """The most model calls the stages may make, for the new-review form."""
+        limits = self.step_limits(target_papers)
+        return {
+            "stages": sum(limits.values()),
+            "per_stage": limits,
+            "skill_graph": self.settings["engine"].get("graph_max_steps", 100),
+        }
+
+    def workflow(self, request: dict | None = None) -> WorkflowDefinition:
+        """The workflow, with the step limits for ``request``'s number of papers."""
+        document = copy.deepcopy(self.workflow_document)
+        if request is not None:
+            limits = self.step_limits(request["target_papers"])
+            for node in document["nodes"]:
+                node["react"]["max_steps"] = limits[node["id"]]
+        return WorkflowDefinition.from_dict(document)
 
     def folder(self, run_id: str) -> Path:
         if not isinstance(run_id, str) or not run_id.replace("-", "").isalnum():
@@ -248,7 +275,7 @@ class RunService:
     def _drive(self, run_id: str, *, retry: bool = False) -> None:
         state = self._state(run_id)
         record = self.record(run_id)
-        workflow = self.workflow()
+        workflow = self.workflow(record["request"])
         try:
             task = self._task(run_id) or Task.create(workflow, {"request": record["request"]})
             task.metadata["run_id"] = run_id
@@ -432,7 +459,7 @@ class RunService:
         live = state.live if state else LiveTasks()
         task = self._task(run_id)
         return task_graph(
-            self.workflow(),
+            self.workflow(self.record(run_id)["request"]),
             task,
             live,
             running=state is not None and state.thread is not None,

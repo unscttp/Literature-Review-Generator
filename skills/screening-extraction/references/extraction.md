@@ -17,4 +17,5 @@
 - Keep the same fields comparable across papers: same units, same terms.
 - Notes are written in the review language; quote key terms in the original
   where translation would lose meaning.
-- One `library_note` call per paper; read up to 8 records per `library_get`.
+- Read up to 8 records per `library_get` and save the notes of up to 10 papers per
+  `library_note` call: a review of many papers then needs few calls.

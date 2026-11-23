@@ -1,7 +1,7 @@
 ---
 name: review-writing
 description: Write a literature review from an outline - section structure, synthesis instead of summary, careful claims, citation by library id, and the conventions of Chinese academic writing for reviews in Simplified Chinese. Use in the outline, write and review stages.
-license: MIT
+license: Apache-2.0
 metadata:
   version: "1.0"
 ---

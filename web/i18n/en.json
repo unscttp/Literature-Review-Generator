@@ -27,7 +27,8 @@
   "notesPlaceholder": "Focus, things to leave out, the readers, the length ...",
   "start": "Start the review",
   "starting": "Starting ...",
-  "noModel": "No model is chosen yet. In the terminal, run: python run.py --setup"
+  "noModel": "No model is chosen yet. In the terminal, run: python run.py --setup",
+  "budget": "Up to about {calls} model calls for the eight stages (their step limits grow with the number of papers), plus up to {graph} for each skill graph a stage runs. Most reviews need fewer; check your provider's rate limits and prices."
  },
  "options": {
   "language": {

@@ -61,6 +61,15 @@ class Api:
             "model": self.service.model_name(),
             "openalex_key": bool(local_settings().get("openalex_api_key")),
             "defaults": self.service.settings["defaults"],
+            # Step limits per stage: base + per_paper * papers (see config/settings.json).
+            "steps": {
+                "base": {
+                    node["id"]: node["react"]["max_steps"]
+                    for node in self.service.workflow_document["nodes"]
+                },
+                "per_paper": self.service.settings.get("steps_per_paper", {}),
+                "skill_graph": self.service.settings["engine"].get("graph_max_steps", 100),
+            },
             "options": {
                 "language": list(LANGUAGES),
                 "style": list(STYLES),

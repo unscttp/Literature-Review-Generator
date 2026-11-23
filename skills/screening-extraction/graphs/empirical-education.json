@@ -37,7 +37,7 @@
         },
         "allowance": "lrg-screen-only",
         "react": {
-          "max_steps": 24,
+          "max_steps": 40,
           "on_step_limit": "answer"
         },
         "config": {
@@ -84,7 +84,7 @@
           "on_step_limit": "answer"
         },
         "config": {
-          "instruction": "Node of the empirical-education screening graph. For each included paper (library_list status included; library_get up to 8 at a time) save a library_note in the review language: summary; method = design and analysis; data = participants (number, age or level, country, setting) and period; findings = main results with direction and effect sizes or significance when reported; limitations; notes = intervention details and outcome measures. Write 'not reported' for missing information. Answer with how many studies were extracted and an overview of designs and settings."
+          "instruction": "Node of the empirical-education screening graph. For each included paper (library_list status included; library_get up to 8 at a time) save notes with library_note, up to 10 papers per call, in the review language: summary; method = design and analysis; data = participants (number, age or level, country, setting) and period; findings = main results with direction and effect sizes or significance when reported; limitations; notes = intervention details and outcome measures. Write 'not reported' for missing information. Answer with how many studies were extracted and an overview of designs and settings."
         }
       }
     ],

@@ -210,11 +210,15 @@ def demo_script():
             call("library.get", ids=["P1", "P2"]),
             call(
                 "library.note",
-                id="P1",
-                summary="Irony via free indirect discourse.",
-                method="close reading",
+                notes=[
+                    {
+                        "id": "P1",
+                        "summary": "Irony via free indirect discourse.",
+                        "method": "close reading",
+                    },
+                    {"id": "P2", "summary": "A book on irony.", "method": "not reported"},
+                ],
             ),
-            call("library.note", id="P2", summary="A book on irony.", method="not reported"),
             answer("Notes for 2 papers."),
         ],
         "organize": [

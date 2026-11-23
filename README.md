@@ -9,7 +9,7 @@ takes notes, organizes the papers into themes, plans the outline, writes the
 review and checks it. The interface and the reviews are in English or
 Simplified Chinese.
 
-It is a showcase of [Directed Growing Sheet](https://github.com/unscttp/directed-growing-sheet)
+It is a showcase of [Directed Growing Sheet](https://github.com/unscttp/Directed-Growing-Sheet)
 (DGS), a JSON-first workflow engine for AI agents. Everything that makes a
 review trustworthy is enforced by DGS rather than by asking the model nicely:
 what each stage may do, when you are asked, which papers can be cited.
@@ -41,7 +41,7 @@ model you want to use: Gemini, Claude, GPT or DeepSeek. A model running on
 your own computer with Ollama or LM Studio needs no key.
 
 ```bash
-git clone --recursive https://github.com/unscttp/literature-review-generator
+git clone --recursive https://github.com/unscttp/Literature-Review-Generator
 cd literature-review-generator
 python install.py
 ```
@@ -82,9 +82,15 @@ Downloaded the ZIP instead of using git? `install.py` fetches DGS by itself.
    with the result of the citation check. Download it as Markdown and the
    references as BibTeX.
 
-The stages' step limits allow up to about 200 model calls per review; how
-long that takes depends on the model and its rate limits. Runs continue in the
-background; you can close the browser tab. If the app is stopped during a run, open the review and press
+**How many model calls?** Each stage has a step limit that grows with the
+number of papers to include (`max_steps` in `config/workflow.json` plus
+`steps_per_paper` in `config/settings.json`). The eight stages may make up to
+about 130 calls for 5 papers, 185 for 25 and 330 for 80, plus up to 120 for each
+skill graph a stage runs; the form shows the number for your review. A wide
+field uses much of that budget: with skill graphs a large review can approach
+1000 calls. Check your provider's rate limits and prices, and raise the limits
+in the two files if stages run out of steps. Runs continue in the background;
+you can close the browser tab. If the app is stopped during a run, open the review and press
 **Resume**: finished steps are not repeated.
 
 ## How it works
@@ -213,3 +219,7 @@ so they need no key and no network. The code:
 | `lrg/demo.py` | The scripted demo model |
 | `web/` | The interface: plain HTML, CSS and JavaScript; texts in `web/i18n/` |
 | `third_party/dgs` | Directed Growing Sheet (git submodule) |
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).

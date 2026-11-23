@@ -1,7 +1,7 @@
 ---
 name: literature-search
 description: Plan and run the literature search of a review - turn research questions into concepts, synonyms and queries, choose sources (OpenAlex, arXiv), find reviews, classics and recent work, fill gaps and decide when the search is complete. Use in the search stage, and when writing search queries for a scope.
-license: MIT
+license: Apache-2.0
 metadata:
   version: "1.0"
 ---

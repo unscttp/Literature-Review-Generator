@@ -1,7 +1,7 @@
 ---
 name: review-organization
 description: Organize the papers of a literature review - choose a structure (themes, methods, chronology, theories, debates), group the papers, compare them, and find agreements, contradictions and gaps. Use in the organize stage and when planning the outline.
-license: MIT
+license: Apache-2.0
 metadata:
   version: "1.0"
 ---

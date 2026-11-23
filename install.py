@@ -28,8 +28,8 @@ ROOT = Path(__file__).resolve().parent
 VENV = ROOT / ".venv"
 DGS = ROOT / "third_party" / "dgs"
 # The DGS version this app is tested with (the submodule's commit).
-DGS_REPOSITORY = "https://github.com/unscttp/directed-growing-sheet"
-DGS_COMMIT = "4ccc4396a9912691c5d6bd6ba9db4cd05cf75a62"
+DGS_REPOSITORY = "https://github.com/unscttp/Directed-Growing-Sheet"
+DGS_COMMIT = "2253b48f569d95b12daa91678376d03b2f28a292"
 
 
 def python_in_venv() -> Path:
@@ -58,7 +58,7 @@ def fetch_dgs() -> None:
         sys.exit(
             f"Could not download {url} ({exc}).\n"
             "Clone the app with git instead:\n"
-            "  git clone --recursive https://github.com/unscttp/literature-review-generator"
+            "  git clone --recursive https://github.com/unscttp/Literature-Review-Generator"
         )
     prefix = archive.namelist()[0].split("/")[0] + "/"
     DGS.mkdir(parents=True, exist_ok=True)

@@ -120,8 +120,24 @@
     );
     const target = document.querySelector("input[name=target_papers]");
     if (!target.value) target.value = info.defaults.target_papers;
+    renderBudget();
     $("no-model").hidden = Boolean(info.model);
     $("start-button").disabled = !info.model;
+  }
+
+  /** The most model calls a review of this size may make (the stages' step limits). */
+  function renderBudget() {
+    const steps = state.info?.steps;
+    const papers = Number(document.querySelector("input[name=target_papers]").value);
+    if (!steps || !(papers >= 5 && papers <= 80)) {
+      $("budget-note").textContent = "";
+      return;
+    }
+    const calls = Object.entries(steps.base).reduce(
+      (sum, [stage, base]) => sum + base + Math.ceil((steps.per_paper[stage] || 0) * papers),
+      0,
+    );
+    $("budget-note").textContent = t("form.budget", { calls, graph: steps.skill_graph });
   }
 
   function renderOverview() {
@@ -592,6 +608,7 @@
   async function start() {
     await I18n.init();
     $("new-form").addEventListener("submit", submitNew);
+    document.querySelector("input[name=target_papers]").addEventListener("input", renderBudget);
     $("new-button").addEventListener("click", () => { location.hash = "#new"; closeMenu(); });
     $("language-button").addEventListener("click", () => I18n.use(I18n.other()));
     $("menu-button").addEventListener("click", () => {

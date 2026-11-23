@@ -28,7 +28,7 @@ from collections.abc import Callable
 OPENALEX_WORKS = "https://api.openalex.org/works"
 ARXIV_QUERY = "https://export.arxiv.org/api/query"
 USER_AGENT = (
-    "literature-review-generator/1.0 (+https://github.com/unscttp/literature-review-generator)"
+    "literature-review-generator/1.0 (+https://github.com/unscttp/Literature-Review-Generator)"
 )
 TIMEOUT_SECONDS = 30
 MAX_AUTHORS = 25

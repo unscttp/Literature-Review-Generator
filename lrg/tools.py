@@ -171,10 +171,21 @@ LIBRARY_NOTE = ToolDefinition(
     "library.note",
     "low",
     description=(
-        "Save extraction notes for one paper: summary, method, data, findings, limitations, "
-        "notes. Base them on the record you read; write 'not reported' rather than guessing."
+        "Save extraction notes for up to 10 papers at once: for each, summary, method, data, "
+        "findings, limitations, notes. Base them on the records you read; write 'not reported' "
+        "rather than guessing."
     ),
-    input_schema=_object({"id": _ID, **{f: _TEXT for f in NOTE_FIELDS}}, ["id"]),
+    input_schema=_object(
+        {
+            "notes": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 10,
+                "items": _object({"id": _ID, **{f: _TEXT for f in NOTE_FIELDS}}, ["id"]),
+            }
+        },
+        ["notes"],
+    ),
 )
 LIBRARY_TAG = ToolDefinition(
     "library.tag",
@@ -400,7 +411,18 @@ class RunTools:
         return {"counts": self.library.decide(args["decisions"])}
 
     def note(self, context, tool, args):
-        return self.library.note(args["id"], {k: v for k, v in args.items() if k != "id"})
+        known = self.library.ids()
+        unknown = [entry["id"] for entry in args["notes"] if entry["id"] not in known]
+        if unknown:
+            raise KeyError(f"Unknown paper ids: {', '.join(unknown)}. Nothing was saved.")
+        saved = [
+            self.library.note(entry["id"], {k: v for k, v in entry.items() if k != "id"})["id"]
+            for entry in args["notes"]
+        ]
+        return {
+            "saved": saved,
+            "with_notes": sum(bool(p.get("notes")) for p in self.library.papers()),
+        }
 
     def tag(self, context, tool, args):
         return self.library.tag(args["assignments"])

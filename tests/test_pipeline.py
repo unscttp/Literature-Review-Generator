@@ -165,3 +165,43 @@ class RunControlTests(ServiceCase):
 
         with self.assertRaises(RunError):
             service.resume(run["id"])
+
+
+class StepLimitTests(ServiceCase):
+    def test_step_limits_grow_with_the_number_of_papers(self):
+        service = self.make_service()
+        small = service.workflow({"target_papers": 5})
+        large = service.workflow({"target_papers": 80})
+        self.assertEqual(
+            small.node("scope").react["max_steps"], large.node("scope").react["max_steps"]
+        )
+        self.assertEqual(large.node("extract").react["max_steps"], 10 + 64)
+        self.assertLess(service.call_budget(5)["stages"], service.call_budget(80)["stages"])
+        self.assertEqual(service.call_budget(25)["stages"], sum(service.step_limits(25).values()))
+        # The run uses the limits of its own request.
+        run = service.create({"topic": "Irony in Austen", "target_papers": 80})
+        self.wait(run["id"])
+        task = service._task(run["id"])
+        self.assertEqual(task.executions[0].node_id, "scope")
+        graph = service.graph(run["id"])
+        self.assertEqual(len(graph["graphs"][0]["nodes"]), 8)
+
+
+class NoteTests(ServiceCase):
+    def test_notes_for_several_papers_at_once(self):
+        import tempfile
+        from pathlib import Path
+
+        from lrg.tools import RunTools
+
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        tools = RunTools(Path(folder.name), {})
+        tools.library.add([{"title": "A"}, {"title": "B"}], query="q", source="openalex")
+        with self.assertRaises(KeyError):
+            tools.note(None, None, {"notes": [{"id": "P1", "summary": "x"}, {"id": "P9"}]})
+        self.assertFalse(tools.library.get("P1").get("notes"))  # nothing saved
+        reply = tools.note(
+            None, None, {"notes": [{"id": "P1", "summary": "x"}, {"id": "P2", "method": "y"}]}
+        )
+        self.assertEqual(reply, {"saved": ["P1", "P2"], "with_notes": 2})

@@ -1,7 +1,7 @@
 ---
 name: screening-extraction
 description: Screen candidate papers against a review's inclusion and exclusion criteria with recorded reasons, and extract comparable evidence (method, data, findings, limitations) from the included papers. Use in the screen and extract stages.
-license: MIT
+license: Apache-2.0
 metadata:
   version: "1.0"
 ---
@@ -36,7 +36,7 @@ Read `references/screening.md` for edge cases.
 
 ## Extraction
 
-For each included paper save with `library_note`:
+For each included paper save with `library_note` (up to 10 papers per call):
 
 - **summary** - one or two sentences: what the paper does;
 - **method** - design or approach (experiment, survey, case study, corpus

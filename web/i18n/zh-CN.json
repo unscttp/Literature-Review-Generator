@@ -27,7 +27,8 @@
   "notesPlaceholder": "侧重点、需要排除的内容、目标读者、篇幅等",
   "start": "开始综述",
   "starting": "正在开始……",
-  "noModel": "还没有选择模型。请在终端中运行：python run.py --setup"
+  "noModel": "还没有选择模型。请在终端中运行：python run.py --setup",
+  "budget": "八个阶段最多约 {calls} 次模型调用（步数上限随文献数量增加）；阶段每运行一张技能图，最多再增加 {graph} 次。大多数综述用不了这么多；请留意服务商的速率限制和费用。"
  },
  "options": {
   "language": {
