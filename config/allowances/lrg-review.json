@@ -1,0 +1,15 @@
+{
+  "id": "lrg-review",
+  "description": "Stage 8: check and revise the sections, write the abstract.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:review.outline",
+    "tool:review.read",
+    "tool:review.write_section",
+    "tool:review.delete_section",
+    "tool:review.check"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

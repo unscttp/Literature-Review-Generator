@@ -1,0 +1,167 @@
+"""The eight-stage workflow, end to end, with a scripted model."""
+
+import json
+
+from tests.support import ServiceCase
+
+
+class PipelineTests(ServiceCase):
+    def test_full_review(self):
+        service = self.make_service()
+        run = service.create({"topic": "Irony in Jane Austen", "style": "gbt7714"})
+        summary = self.wait(run["id"])
+        self.assertEqual(summary["status"], "waiting")
+        [approval] = summary["approvals"]
+        self.assertEqual((approval["kind"], approval["can_revise"]), ("scope_review", True))
+        self.assertEqual(approval["scope"]["title"], "Irony in Jane Austen")
+
+        # Asking for changes sends the comment back; the model revises and resubmits.
+        service.decide(run["id"], approval["id"], False, "Add Chinese criticism")
+        summary = self.wait(run["id"])
+        [approval] = summary["approvals"]
+        self.assertEqual(approval["scope"]["notes"], "Revised: Add Chinese criticism")
+        service.decide(run["id"], approval["id"], True)
+        summary = self.wait(run["id"])
+        self.assertEqual(summary["status"], "completed", summary.get("error"))
+
+        self.assertEqual(summary["scope"]["notes"], "Revised: Add Chinese criticism")
+        self.assertEqual(len(summary["stages"]), 8)
+        self.assertEqual(summary["counts"]["included"], 2)
+        # The rules reach every node, also the skill graph's.
+        self.assertTrue(all("Never invent literature" in system for _, system in self.model.calls))
+        self.assertIn("coverage", {node for node, _ in self.model.calls})
+
+        report = service.report(run["id"])
+        self.assertIn("[1]", report["markdown"])
+        self.assertIn("## References", report["markdown"])
+        self.assertTrue(report["check"]["ok"], report["check"])
+        folder = service.folder(run["id"])
+        self.assertTrue(
+            (folder / "report.md").read_text("utf-8").startswith("# Irony in Jane Austen")
+        )
+        self.assertIn("@article{example2015irony", (folder / "references.bib").read_text("utf-8"))
+
+        graph = service.graph(run["id"])
+        root, child = graph["graphs"]
+        self.assertEqual([n["status"] for n in root["nodes"]], ["completed"] * 8)
+        self.assertEqual(child["parent"]["node"], "search")
+        self.assertEqual(child["title"], "english-literature")
+        self.assertEqual({n["status"] for n in child["nodes"]}, {"completed"})
+        # DGS recorded the graph's run in the installed skill.
+        meta = service.skills_dir / "literature-search" / "graphs" / "english-literature.meta.json"
+        meta = json.loads(meta.read_text())
+        self.assertEqual((meta["last_run"]["outcome"], meta["runs"]["completed"]), ("completed", 1))
+        self.assertEqual(meta["last_run"]["environment"]["host"]["model"], "scripted")
+
+
+class RunControlTests(ServiceCase):
+    def approve(self, run_id):
+        summary = self.wait(run_id)
+        self.service.decide(run_id, summary["approvals"][0]["id"], True)
+
+    def test_requests_are_validated(self):
+        from lrg.pipeline import RunError
+
+        service = self.make_service()
+        for bad in (
+            {"topic": "ab"},
+            {"topic": "Irony", "language": "fr"},
+            {"topic": "Irony", "style": "chicago"},
+            {"topic": "Irony", "target_papers": 2},
+            {"topic": "Irony", "sources": ["scholar"]},
+            {"topic": "Irony", "from_year": 2020, "to_year": 2010},
+        ):
+            with self.assertRaises(RunError, msg=bad):
+                service.create(bad)
+        self.assertEqual(service.list(), [])
+
+    def test_no_model(self):
+        from lrg.model import NoModel, create_model
+
+        service = self.make_service(model_factory=lambda: create_model({}))
+        with self.assertRaises(NoModel):
+            service.create({"topic": "Irony in Austen"})
+
+    def test_cancel(self):
+        service = self.make_service()
+        run = service.create({"topic": "Irony in Austen"})
+        self.wait(run["id"])
+        self.assertEqual(service.cancel(run["id"])["status"], "cancelled")
+        from lrg.pipeline import RunError
+
+        with self.assertRaises(RunError):
+            service.decide(run["id"], "approval_x", True)
+        # A cancelled run can be resumed: it is still waiting for the scope.
+        service.resume(run["id"])
+        self.approve(run["id"])
+        self.assertEqual(self.wait(run["id"])["status"], "completed")
+
+    def test_cancel_while_running_stops_before_the_next_model_call(self):
+        from lrg.demo import call
+
+        service = self.make_service()
+        run = service.create({"topic": "Irony in Austen"})
+        summary = self.wait(run["id"])
+        state = service._state(run["id"])
+
+        def press_cancel(payload):  # the user presses Cancel while the search stage runs
+            state.cancelled = True
+            return call("skill.literature-search.invoke")
+
+        self.model.script["search"][0] = press_cancel
+        service.decide(run["id"], summary["approvals"][0]["id"], True)
+        summary = self.wait(run["id"])
+        self.assertEqual(summary["status"], "cancelled")
+        self.assertEqual(summary["counts"]["total"], 0)  # stopped before searching
+
+    def test_resume_after_the_app_stopped(self):
+        from lrg.pipeline import RunService
+
+        service = self.make_service()
+        run = service.create({"topic": "Irony in Austen"})
+        self.approve(run["id"])
+        self.wait(run["id"])
+        # Pretend the app stopped during the last five stages.
+        folder = service.folder(run["id"])
+        task = json.loads((folder / "task.json").read_text())
+        for execution in task["executions"]:
+            if execution["node_id"] in ("extract", "organize", "outline", "write", "review"):
+                execution["status"] = "failed"
+        record = json.loads((folder / "run.json").read_text())
+        record["status"] = "running"
+        (folder / "run.json").write_text(json.dumps(record))
+        restarted = RunService(
+            service.data,
+            model_factory=lambda: self.model,
+            model_name=lambda: "scripted",
+            openalex=service.searches["openalex"],
+            arxiv=service.searches["arxiv"],
+        )
+        self.service = restarted
+        self.assertEqual(restarted.summary(run["id"])["status"], "interrupted")
+        searches = restarted.summary(run["id"])["counts"]["searches"]
+        restarted.resume(run["id"])
+        summary = self.wait(run["id"])
+        self.assertEqual(summary["status"], "completed")
+        self.assertEqual(
+            summary["counts"]["searches"], searches
+        )  # finished stages are not repeated
+
+    def test_scope_answered_without_submitting_needs_approval(self):
+        from lrg.demo import answer, demo_script
+
+        script = demo_script()
+        script["scope"] = [answer("A scope written as plain text.")]
+        service = self.make_service(script)
+        run = service.create({"topic": "Irony in Austen"})
+        summary = self.wait(run["id"])
+        [approval] = summary["approvals"]
+        self.assertFalse(approval["can_revise"])
+        self.assertEqual(approval["scope"], {"text": "A scope written as plain text."})
+        service.decide(run["id"], approval["id"], False)
+        summary = self.wait(run["id"])
+        self.assertEqual(summary["status"], "failed")
+        from lrg.pipeline import RunError
+
+        with self.assertRaises(RunError):
+            service.resume(run["id"])

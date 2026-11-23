@@ -1,0 +1,17 @@
+{
+  "id": "lrg-write",
+  "description": "Stage 7: read the library and outline, write sections; the review-writing skill and its graphs.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:review.outline",
+    "tool:review.write_section",
+    "tool:review.read",
+    "tool:skill.review-writing.invoke",
+    "tool:skill.review-writing.read",
+    "tool:skill.review-writing.finish",
+    "tool:skill.review-writing.run_graph"
+  ],
+  "max_tool_risk": "high",
+  "config": {}
+}

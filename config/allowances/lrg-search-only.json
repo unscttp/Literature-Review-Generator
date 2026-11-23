@@ -1,0 +1,11 @@
+{
+  "id": "lrg-search-only",
+  "description": "Skill graph nodes: search and list the library.",
+  "actions": [
+    "tool:lit.search_openalex",
+    "tool:lit.search_arxiv",
+    "tool:library.list"
+  ],
+  "max_tool_risk": "medium",
+  "config": {}
+}

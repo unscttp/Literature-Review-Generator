@@ -1,0 +1,15 @@
+{
+  "id": "lrg-outline",
+  "description": "Stage 6: read the library and save the outline.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:review.set_outline",
+    "tool:review.outline",
+    "tool:skill.review-writing.invoke",
+    "tool:skill.review-writing.read",
+    "tool:skill.review-writing.finish"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

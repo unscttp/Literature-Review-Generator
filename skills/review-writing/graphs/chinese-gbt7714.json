@@ -1,0 +1,89 @@
+{
+  "usage_scenario_file": "chinese-gbt7714.md",
+  "usage_scenario_sha256": "de70a47b4a6f3c3d4e113362b56ed91192cfaef0af659d02f686c160d0c282e5",
+  "graph": {
+    "nodes": [
+      {
+        "id": "glossary",
+        "type": "stage",
+        "name": "Terminology glossary",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "outline": "/stages/outline"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/chinese-gbt7714/glossary"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 4,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the chinese-gbt7714 writing graph. Read the outline (it is in the context as outline, or use the included papers with library_list) and build a glossary of the 15-40 key terms of this review: each English term with its established Simplified Chinese translation (术语), one translation per term, plus the convention for author names (Latin spelling with family name only in running text). Answer with the glossary as a table."
+        }
+      },
+      {
+        "id": "draft",
+        "type": "stage",
+        "name": "Draft in Chinese",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "outline": "/stages/outline",
+          "organize": "/stages/organize",
+          "glossary": "/skill_graphs/chinese-gbt7714/glossary"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/chinese-gbt7714/draft"
+        },
+        "allowance": "lrg-write-only",
+        "react": {
+          "max_steps": 30,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the chinese-gbt7714 writing graph. Write every section of the outline (review_outline) in Simplified Chinese written academic style (书面语) with review_write_section, one call per section, in outline order; no abstract. Before each theme section read its papers with library_get. Use the glossary's terms, with the English in parentheses at first mention. Cite with library ids before the closing punctuation: …存在显著差异 [P3, P7]。 Synthesize several papers per paragraph; topic sentence first. The method section reports the real sources, queries and counts (library_list). Answer with the sections and their lengths."
+        }
+      },
+      {
+        "id": "polish",
+        "type": "stage",
+        "name": "Revise the Chinese text",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "glossary": "/skill_graphs/chinese-gbt7714/glossary",
+          "draft": "/skill_graphs/chinese-gbt7714/draft"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/chinese-gbt7714/polish"
+        },
+        "allowance": "lrg-write-only",
+        "react": {
+          "max_steps": 24,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the chinese-gbt7714 writing graph. Read each section (review_read with section_id) and revise it with review_write_section where needed: written register instead of colloquial words, no translationese (被…所…, chains of 的, 进行…的研究), consistent terms from the glossary, full-width Chinese punctuation and half-width numbers, citations before closing punctuation, and paragraphs that compare papers instead of listing them. Keep every citation that is correct. Answer with what you revised in each section."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "glossary",
+        "to": "draft"
+      },
+      {
+        "from": "draft",
+        "to": "polish"
+      }
+    ],
+    "depth": 1
+  },
+  "start": [
+    "glossary"
+  ],
+  "explanation": "Write a literature review in Simplified Chinese with GB/T 7714 references: a glossary of key terms, a draft of every outline section in Chinese academic style, then a revision pass for register, terminology and synthesis. Only the draft and polish nodes may write sections."
+}

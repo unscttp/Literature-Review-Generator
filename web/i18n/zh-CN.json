@@ -1,0 +1,294 @@
+{
+ "app": {
+  "title": "文献综述生成器",
+  "tagline": "基于 Directed Growing Sheet：从一个题目出发，经过八个可追踪的阶段，生成有引用的文献综述。"
+ },
+ "nav": {
+  "newReview": "新建综述",
+  "reviews": "我的综述",
+  "noReviews": "还没有综述。",
+  "settings": "设置",
+  "language": "English"
+ },
+ "form": {
+  "heading": "开始一篇文献综述",
+  "intro": "描述你的题目。检索开始前，由你批准综述范围；之后的步骤自动进行，可在工作流视图中实时查看。",
+  "topic": "题目",
+  "topicPlaceholder": "例如：简·奥斯丁小说中的反讽与叙述声音",
+  "language": "综述语言",
+  "style": "引用格式",
+  "reviewType": "综述类型",
+  "years": "发表年份",
+  "from": "从",
+  "to": "到",
+  "target": "纳入文献数量",
+  "sources": "文献来源",
+  "notes": "给综述撰写者的说明（可选）",
+  "notesPlaceholder": "侧重点、需要排除的内容、目标读者、篇幅等",
+  "start": "开始综述",
+  "starting": "正在开始……",
+  "noModel": "还没有选择模型。请在终端中运行：python run.py --setup"
+ },
+ "options": {
+  "language": {
+   "en": "英语",
+   "zh-CN": "简体中文"
+  },
+  "style": {
+   "apa": "APA 第 7 版",
+   "gbt7714": "GB/T 7714-2015（顺序编码制）",
+   "mla": "MLA 第 9 版"
+  },
+  "review_type": {
+   "narrative": "叙述性综述",
+   "scoping": "范围综述",
+   "systematic": "系统性风格综述"
+  },
+  "sources": {
+   "openalex": "OpenAlex（所有学科）",
+   "arxiv": "arXiv（预印本：计算机、物理、数学等）"
+  }
+ },
+ "status": {
+  "queued": "排队中",
+  "running": "运行中",
+  "waiting": "等待你的决定",
+  "completed": "已完成",
+  "failed": "失败",
+  "cancelled": "已取消",
+  "interrupted": "已中断",
+  "idle": "未开始"
+ },
+ "run": {
+  "model": "模型",
+  "created": "开始于",
+  "decisions": "次模型决策",
+  "tokens": "个 token",
+  "toolCalls": "次工具调用",
+  "retries": "次重试",
+  "papers": "篇文献",
+  "included": "篇纳入",
+  "words": "字",
+  "cancel": "取消",
+  "resume": "继续",
+  "delete": "删除",
+  "confirmDelete": "删除这篇综述及其文件？",
+  "cancelling": "运行将在下一次调用模型前停止。",
+  "error": "出错原因"
+ },
+ "tabs": {
+  "workflow": "工作流",
+  "library": "文献库",
+  "report": "综述正文",
+  "activity": "运行记录"
+ },
+ "approval": {
+  "heading": "批准综述范围",
+  "intro": "批准后开始检索。如需修改，请写明修改意见并退回：模型会修改范围并再次提交。",
+  "fallbackIntro": "模型没有提交结构化的范围就给出了回答。批准则按此继续，拒绝则结束本次运行。",
+  "title": "暂定标题",
+  "questions": "研究问题",
+  "inclusion": "纳入标准",
+  "exclusion": "排除标准",
+  "queries": "检索式",
+  "years": "年份",
+  "notes": "备注",
+  "text": "范围",
+  "approve": "批准并开始检索",
+  "requestChanges": "附修改意见退回",
+  "reject": "拒绝并结束",
+  "commentPlaceholder": "需要修改什么？例如：也纳入中文学界的研究。",
+  "commentNeeded": "请先写明需要修改的地方。",
+  "other": "运行需要你的决定",
+  "approveOther": "批准",
+  "rejectOther": "拒绝"
+ },
+ "viewer": {
+  "heading": "工作流",
+  "skillGraph": "技能图",
+  "runBy": "运行于阶段",
+  "idleHint": "每篇综述都经过这八个阶段。点击阶段查看它的作用。",
+  "activity": {
+   "model": "思考中……",
+   "tool": "正在使用工具",
+   "graph": "正在运行技能图",
+   "approval": "等待你的决定"
+  },
+  "attempts": "次尝试",
+  "decisions": "次决策",
+  "toolCalls": "次工具调用",
+  "stageOutput": "本阶段结果",
+  "noOutput": "尚无结果。",
+  "allowance": "权限",
+  "close": "关闭"
+ },
+ "library": {
+  "filter": {
+   "all": "全部",
+   "candidate": "候选",
+   "included": "已纳入",
+   "excluded": "已排除"
+  },
+  "id": "编号",
+  "paper": "文献",
+  "year": "年份",
+  "status": "状态",
+  "reason": "理由",
+  "themes": "主题",
+  "notes": "笔记",
+  "cited": "被引",
+  "empty": "还没有文献。",
+  "searches": "检索记录",
+  "query": "检索式",
+  "source": "来源",
+  "found": "条结果",
+  "new": "条新增",
+  "statuses": {
+   "candidate": "候选",
+   "included": "已纳入",
+   "excluded": "已排除"
+  },
+  "fields": {
+   "summary": "概要",
+   "method": "方法",
+   "data": "数据",
+   "findings": "发现",
+   "limitations": "局限",
+   "notes": "备注"
+  }
+ },
+ "report": {
+  "empty": "写作阶段开始后，正文会显示在这里。",
+  "downloadMd": "下载 Markdown",
+  "downloadBib": "下载 BibTeX",
+  "copy": "复制正文",
+  "copied": "已复制",
+  "checkOk": "检查通过：所有引用都是文献库中已纳入的文献。",
+  "issuesHeading": "检查发现：",
+  "words": "字",
+  "cited": "篇被引用",
+  "draftNote": "草稿：综述仍在撰写中。",
+  "issues": {
+   "unknown_citation": "引用了文献库中不存在的文献",
+   "cites_not_included": "引用了未纳入的文献",
+   "included_not_cited": "已纳入但从未被引用的文献",
+   "short_section": "章节过短",
+   "missing_abstract": "尚无摘要",
+   "missing_sections": "提纲中尚未撰写的章节"
+  }
+ },
+ "activity": {
+  "empty": "暂无记录。",
+  "kinds": {
+   "tool.requested": "工具",
+   "tool.completed": "完成",
+   "tool.failed": "工具出错",
+   "llm.retry": "模型重试",
+   "approval.requested": "请求批准",
+   "approval.resolved": "已决定",
+   "graph.requested": "请求运行技能图",
+   "graph.completed": "技能图完成",
+   "graph.failed": "技能图失败",
+   "skill.invoke.opened": "打开技能",
+   "node.failed": "阶段失败"
+  }
+ },
+ "settings": {
+  "heading": "设置",
+  "model": "模型",
+  "noModel": "未选择",
+  "modelHelp": "如需更换模型，请停止本程序，并在终端中运行 python run.py --setup。",
+  "openalex": "OpenAlex API 密钥（可选）",
+  "openalexHelp": "OpenAlex 不需要密钥也能使用，但所有无密钥用户共享每日额度。在 openalex.org 免费申请的密钥有独立额度。密钥只保存在本机。",
+  "keySet": "已保存密钥。",
+  "keyNotSet": "未保存密钥。",
+  "save": "保存",
+  "remove": "删除密钥",
+  "saved": "已保存。",
+  "close": "关闭"
+ },
+ "skills": {
+  "heading": "技能与示例图",
+  "intro": "各阶段会打开这些技能获取指导。每个技能都带有一张针对某类综述的示例图，阶段可以把它作为子图运行；运行时它会显示在该阶段下方。",
+  "show": "显示图",
+  "hide": "隐藏图",
+  "literature-search": {
+   "name": "文献检索",
+   "description": "从概念和同义词构建检索式，选择来源，查找综述、经典与最新研究，补足缺口。"
+  },
+  "screening-extraction": {
+   "name": "筛选与信息提取",
+   "description": "带排除代码的标准、有记录的决定、每篇纳入文献的可比较笔记。"
+  },
+  "review-organization": {
+   "name": "组织综述",
+   "description": "按主题、方法、时间或争论组织文献；分组、比较并找出研究空白。"
+  },
+  "review-writing": {
+   "name": "撰写综述",
+   "description": "结构、综合而非罗列、审慎的论断、中文学术写作规范。"
+  },
+  "graphs": {
+   "english-literature": "英语文学研究",
+   "empirical-education": "教育学实证研究",
+   "fast-moving-cs": "快速发展的计算机科学领域",
+   "chinese-gbt7714": "使用 GB/T 7714 的中文综述"
+  }
+ },
+ "stages": {
+  "scope": {
+   "name": "确定范围",
+   "desc": "研究问题、纳入排除标准和检索式；由你批准。"
+  },
+  "search": {
+   "name": "检索",
+   "desc": "检索 OpenAlex 和 arXiv；所有结果进入文献库。"
+  },
+  "screen": {
+   "name": "筛选",
+   "desc": "逐篇决定纳入或排除，并记录理由。"
+  },
+  "extract": {
+   "name": "提取",
+   "desc": "记录每篇纳入文献的方法、数据、发现与局限。"
+  },
+  "organize": {
+   "name": "组织",
+   "desc": "把文献归入主题并相互比较。"
+  },
+  "outline": {
+   "name": "提纲",
+   "desc": "规划章节及每节引用的文献。"
+  },
+  "write": {
+   "name": "撰写",
+   "desc": "撰写各章节，只引用文献库中的文献。"
+  },
+  "review": {
+   "name": "审校",
+   "desc": "检查引用与覆盖面，修改正文，撰写摘要。"
+  }
+ },
+ "graphNodes": {
+  "plan": "规划检索式",
+  "criticism": "检索评论文献",
+  "context": "检索背景与争论",
+  "coverage": "检查覆盖面",
+  "criteria": "PICOS 标准",
+  "title-abstract": "标题与摘要筛选",
+  "borderline": "判定不确定的文献",
+  "extract": "提取研究数据",
+  "timeline": "时间线与里程碑",
+  "taxonomy": "方法类别",
+  "compare": "比较各类方法",
+  "gaps": "开放问题",
+  "glossary": "术语表",
+  "draft": "撰写中文初稿",
+  "polish": "修改中文文本"
+ },
+ "errors": {
+  "no_model": "还没有选择模型。请在终端中运行：python run.py --setup",
+  "network": "程序没有响应。python run.py 是否仍在运行？",
+  "generic": "出错了"
+ }
+}

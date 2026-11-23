@@ -1,0 +1,11 @@
+{
+  "id": "lrg-screen-only",
+  "description": "Skill graph nodes: read and screen.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:library.decide"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Literature Review Generator</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="i18n.js" defer></script>
+  <script src="markdown.js" defer></script>
+  <script src="viewer.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-button only-narrow" id="menu-button" aria-label="Menu" aria-expanded="false">☰</button>
+    <div class="brand">
+      <img src="icon.svg" alt="" width="28" height="28">
+      <div>
+        <h1 data-i18n="app.title">Literature Review Generator</h1>
+        <p class="tagline" data-i18n="app.tagline"></p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="ghost" id="language-button" data-i18n="nav.language">中文</button>
+      <button class="ghost" id="settings-button" data-i18n="nav.settings">Settings</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <button class="primary wide" id="new-button" data-i18n="nav.newReview">New review</button>
+      <h2 class="sidebar-heading" data-i18n="nav.reviews">Reviews</h2>
+      <ul class="run-list" id="run-list"></ul>
+      <p class="muted small" id="no-runs" data-i18n="nav.noReviews" hidden></p>
+    </nav>
+
+    <main class="content" id="content">
+      <!-- New review -->
+      <section id="new-view" class="view">
+        <div class="card">
+          <h2 data-i18n="form.heading"></h2>
+          <p class="muted" data-i18n="form.intro"></p>
+          <p class="notice warning" id="no-model" data-i18n="form.noModel" hidden></p>
+          <form id="new-form" novalidate>
+            <label class="field">
+              <span data-i18n="form.topic"></span>
+              <textarea name="topic" rows="2" required minlength="3" maxlength="500" data-i18n-placeholder="form.topicPlaceholder"></textarea>
+            </label>
+            <div class="grid">
+              <label class="field"><span data-i18n="form.language"></span><select name="language" data-options="language"></select></label>
+              <label class="field"><span data-i18n="form.style"></span><select name="style" data-options="style"></select></label>
+              <label class="field"><span data-i18n="form.reviewType"></span><select name="review_type" data-options="review_type"></select></label>
+              <label class="field"><span data-i18n="form.target"></span><input name="target_papers" type="number" min="5" max="80" step="1"></label>
+            </div>
+            <fieldset class="field years">
+              <legend data-i18n="form.years"></legend>
+              <label><span data-i18n="form.from"></span> <input name="from_year" type="number" min="1500" max="2100" placeholder="—"></label>
+              <label><span data-i18n="form.to"></span> <input name="to_year" type="number" min="1500" max="2100" placeholder="—"></label>
+            </fieldset>
+            <fieldset class="field">
+              <legend data-i18n="form.sources"></legend>
+              <div id="source-options" class="checks"></div>
+            </fieldset>
+            <label class="field">
+              <span data-i18n="form.notes"></span>
+              <textarea name="notes" rows="3" maxlength="2000" data-i18n-placeholder="form.notesPlaceholder"></textarea>
+            </label>
+            <p class="notice error" id="form-error" hidden></p>
+            <button class="primary" type="submit" id="start-button" data-i18n="form.start"></button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="viewer.heading"></h2>
+          <p class="muted" data-i18n="viewer.idleHint"></p>
+          <div id="overview-graph" class="graph-area"></div>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="skills.heading"></h2>
+          <p class="muted" data-i18n="skills.intro"></p>
+          <div id="skill-list" class="skill-list"></div>
+        </div>
+      </section>
+
+      <!-- One review -->
+      <section id="run-view" class="view" hidden>
+        <div class="run-header">
+          <div>
+            <h2 id="run-title"></h2>
+            <p class="muted small" id="run-meta"></p>
+          </div>
+          <div class="run-actions">
+            <span class="badge" id="run-status"></span>
+            <button class="ghost" id="cancel-button" data-i18n="run.cancel" hidden></button>
+            <button class="ghost" id="resume-button" data-i18n="run.resume" hidden></button>
+            <button class="ghost danger" id="delete-button" data-i18n="run.delete" hidden></button>
+          </div>
+        </div>
+        <p class="notice error" id="run-error" hidden></p>
+        <div id="approvals"></div>
+
+        <div class="tabs" role="tablist">
+          <button role="tab" data-tab="workflow" data-i18n="tabs.workflow"></button>
+          <button role="tab" data-tab="library" data-i18n="tabs.library"></button>
+          <button role="tab" data-tab="report" data-i18n="tabs.report"></button>
+          <button role="tab" data-tab="activity" data-i18n="tabs.activity"></button>
+        </div>
+
+        <div class="tab-panel" data-panel="workflow">
+          <div id="run-graph" class="graph-area"></div>
+          <div id="stage-detail" class="card stage-detail" hidden></div>
+        </div>
+        <div class="tab-panel" data-panel="library" hidden>
+          <div class="filters" id="library-filters"></div>
+          <div class="table-wrap"><table class="papers" id="library-table"></table></div>
+          <p class="muted" id="library-empty" data-i18n="library.empty" hidden></p>
+          <details class="searches"><summary data-i18n="library.searches"></summary><ul id="search-list"></ul></details>
+        </div>
+        <div class="tab-panel" data-panel="report" hidden>
+          <div class="report-tools">
+            <a class="button ghost" id="download-md" data-i18n="report.downloadMd" download></a>
+            <a class="button ghost" id="download-bib" data-i18n="report.downloadBib" download></a>
+            <button class="ghost" id="copy-report" data-i18n="report.copy"></button>
+            <span class="muted small" id="report-stats"></span>
+          </div>
+          <div id="report-check"></div>
+          <article class="report card" id="report-body"></article>
+        </div>
+        <div class="tab-panel" data-panel="activity" hidden>
+          <ol class="activity" id="activity-list"></ol>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="settings-dialog">
+    <form method="dialog" class="dialog-body">
+      <h2 data-i18n="settings.heading"></h2>
+      <h3 data-i18n="settings.model"></h3>
+      <p><strong id="settings-model"></strong></p>
+      <p class="muted small" data-i18n="settings.modelHelp"></p>
+      <h3 data-i18n="settings.openalex"></h3>
+      <p class="muted small" data-i18n="settings.openalexHelp"></p>
+      <p class="small" id="openalex-state"></p>
+      <input type="password" id="openalex-key" autocomplete="off" maxlength="200">
+      <p class="small" id="settings-saved" hidden data-i18n="settings.saved"></p>
+      <div class="dialog-actions">
+        <button type="button" class="primary" id="save-key" data-i18n="settings.save"></button>
+        <button type="button" class="ghost" id="remove-key" data-i18n="settings.remove"></button>
+        <button class="ghost" value="close" data-i18n="settings.close"></button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,116 @@
+{
+  "usage_scenario_file": "english-literature.md",
+  "usage_scenario_sha256": "10337d06732e4a0e320b3f3a9638c247bad28b891c6356ce28a5aac28982048c",
+  "graph": {
+    "nodes": [
+      {
+        "id": "plan",
+        "type": "stage",
+        "name": "Plan query sets",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/english-literature/plan"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 4,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the english-literature search graph (literary studies on literature in English). From the scope write four query sets, 3-6 queries each, mostly in English: (a) primary authors and works, with name and title variants (e.g. 'Austen' and 'Pride and Prejudice'); (b) critical approaches relevant to the research questions (feminist, postcolonial, ecocritical, narratological, new historicist, reception ...), each combined with an author or work; (c) historical and cultural context (period, publishing, readership); (d) recent debates and new approaches (digital humanities, adaptation, global anglophone perspectives). Do not search. Answer with the four sets as lists."
+        }
+      },
+      {
+        "id": "criticism",
+        "type": "stage",
+        "name": "Search criticism",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "plan": "/skill_graphs/english-literature/plan"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/english-literature/criticism"
+        },
+        "allowance": "lrg-search-only",
+        "react": {
+          "max_steps": 16,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the english-literature search graph. Run query sets (a) and (b) from the plan with lit_search_openalex, 20 results each, relevance sort. Literary criticism has low citation counts and much of it is in books and chapters, so do not sort by citations except for one query on the main author or work. Do not use arXiv: it has no literary studies. If a query returns unrelated fields (a 'Gothic' query returning architecture), add 'novel', 'fiction', 'poetry' or 'literature' to it. Answer with each query, how many it found and how many were new."
+        }
+      },
+      {
+        "id": "context",
+        "type": "stage",
+        "name": "Search context and debates",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "plan": "/skill_graphs/english-literature/plan"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/english-literature/context"
+        },
+        "allowance": "lrg-search-only",
+        "react": {
+          "max_steps": 14,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the english-literature search graph. Run query sets (c) and (d) from the plan with lit_search_openalex, 15-20 results each; use sort recent for set (d). If the scope includes criticism in another language, run two queries with that language code. Do not use arXiv. Answer with each query, how many it found and how many were new."
+        }
+      },
+      {
+        "id": "coverage",
+        "type": "stage",
+        "name": "Check coverage",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "criticism": "/skill_graphs/english-literature/criticism",
+          "context": "/skill_graphs/english-literature/context"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/english-literature/coverage"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 8,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the english-literature search graph. List the library (library_list, page with offset) and check it against the scope: is there criticism on every primary author and work, on every critical approach in the research questions, books and chapters as well as articles, older foundational criticism as well as work from the last ten years? Answer with what is covered, the gaps, and 3-8 queries that would fill them."
+        },
+        "join": "all"
+      }
+    ],
+    "edges": [
+      {
+        "from": "plan",
+        "to": "criticism"
+      },
+      {
+        "from": "plan",
+        "to": "context"
+      },
+      {
+        "from": "criticism",
+        "to": "coverage"
+      },
+      {
+        "from": "context",
+        "to": "coverage"
+      }
+    ],
+    "depth": 1
+  },
+  "start": [
+    "plan"
+  ],
+  "explanation": "Search for a review in literary studies on literature in English: plan four query sets (primary authors and works, critical approaches, context, recent debates), run them on OpenAlex in two parallel nodes, then check coverage and report gaps. Search nodes may only search and list the library; the others only read it."
+}

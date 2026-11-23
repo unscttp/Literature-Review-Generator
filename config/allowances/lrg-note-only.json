@@ -1,0 +1,11 @@
+{
+  "id": "lrg-note-only",
+  "description": "Skill graph nodes: read and take notes.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:library.note"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

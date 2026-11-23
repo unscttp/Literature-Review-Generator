@@ -1,0 +1,11 @@
+{
+  "id": "lrg-tag-only",
+  "description": "Skill graph nodes: read and assign themes.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:library.tag"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

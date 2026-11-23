@@ -1,0 +1,13 @@
+{
+  "id": "lrg-write-only",
+  "description": "Skill graph nodes: read and write sections.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:review.outline",
+    "tool:review.write_section",
+    "tool:review.read"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

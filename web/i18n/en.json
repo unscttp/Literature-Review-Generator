@@ -1,0 +1,294 @@
+{
+ "app": {
+  "title": "Literature Review Generator",
+  "tagline": "Eight reviewed stages from a topic to a cited literature review, on Directed Growing Sheet."
+ },
+ "nav": {
+  "newReview": "New review",
+  "reviews": "Reviews",
+  "noReviews": "No reviews yet.",
+  "settings": "Settings",
+  "language": "中文"
+ },
+ "form": {
+  "heading": "Start a literature review",
+  "intro": "Describe the topic. You approve the scope before the search starts; everything after runs on its own and can be followed in the workflow viewer.",
+  "topic": "Topic",
+  "topicPlaceholder": "e.g. Irony and narrative voice in Jane Austen's novels",
+  "language": "Review language",
+  "style": "Citation style",
+  "reviewType": "Kind of review",
+  "years": "Publication years",
+  "from": "from",
+  "to": "to",
+  "target": "Papers to include",
+  "sources": "Sources",
+  "notes": "Notes for the reviewer (optional)",
+  "notesPlaceholder": "Focus, things to leave out, the readers, the length ...",
+  "start": "Start the review",
+  "starting": "Starting ...",
+  "noModel": "No model is chosen yet. In the terminal, run: python run.py --setup"
+ },
+ "options": {
+  "language": {
+   "en": "English",
+   "zh-CN": "Simplified Chinese"
+  },
+  "style": {
+   "apa": "APA 7th edition",
+   "gbt7714": "GB/T 7714-2015 (numeric)",
+   "mla": "MLA 9th edition"
+  },
+  "review_type": {
+   "narrative": "Narrative review",
+   "scoping": "Scoping review",
+   "systematic": "Systematic-style review"
+  },
+  "sources": {
+   "openalex": "OpenAlex (all fields)",
+   "arxiv": "arXiv (preprints: CS, physics, maths ...)"
+  }
+ },
+ "status": {
+  "queued": "Queued",
+  "running": "Running",
+  "waiting": "Waiting for you",
+  "completed": "Completed",
+  "failed": "Failed",
+  "cancelled": "Cancelled",
+  "interrupted": "Interrupted",
+  "idle": "Not started"
+ },
+ "run": {
+  "model": "Model",
+  "created": "Started",
+  "decisions": "model decisions",
+  "tokens": "tokens",
+  "toolCalls": "tool calls",
+  "retries": "retries",
+  "papers": "papers",
+  "included": "included",
+  "words": "words",
+  "cancel": "Cancel",
+  "resume": "Resume",
+  "delete": "Delete",
+  "confirmDelete": "Delete this review and its files?",
+  "cancelling": "The run stops before its next model call.",
+  "error": "What went wrong"
+ },
+ "tabs": {
+  "workflow": "Workflow",
+  "library": "Library",
+  "report": "Report",
+  "activity": "Activity"
+ },
+ "approval": {
+  "heading": "Approve the scope",
+  "intro": "The search starts once you approve. To change something, write what to change and send it back: the model revises the scope and asks again.",
+  "fallbackIntro": "The model answered without submitting a structured scope. Approve to continue with it, or reject to end the run.",
+  "title": "Working title",
+  "questions": "Research questions",
+  "inclusion": "Inclusion criteria",
+  "exclusion": "Exclusion criteria",
+  "queries": "Search queries",
+  "years": "Years",
+  "notes": "Notes",
+  "text": "Scope",
+  "approve": "Approve and start the search",
+  "requestChanges": "Send back with changes",
+  "reject": "Reject and end",
+  "commentPlaceholder": "What should change? e.g. Also include criticism written in Chinese.",
+  "commentNeeded": "Write what should change first.",
+  "other": "The run needs your decision",
+  "approveOther": "Approve",
+  "rejectOther": "Reject"
+ },
+ "viewer": {
+  "heading": "Workflow",
+  "skillGraph": "Skill graph",
+  "runBy": "run by stage",
+  "idleHint": "The eight stages of every review. Click a stage to see what it does.",
+  "activity": {
+   "model": "thinking ...",
+   "tool": "using a tool",
+   "graph": "running a skill graph",
+   "approval": "waiting for you"
+  },
+  "attempts": "attempts",
+  "decisions": "decisions",
+  "toolCalls": "tool calls",
+  "stageOutput": "Result of this stage",
+  "noOutput": "No result yet.",
+  "allowance": "Permissions",
+  "close": "Close"
+ },
+ "library": {
+  "filter": {
+   "all": "All",
+   "candidate": "Candidates",
+   "included": "Included",
+   "excluded": "Excluded"
+  },
+  "id": "ID",
+  "paper": "Paper",
+  "year": "Year",
+  "status": "Status",
+  "reason": "Reason",
+  "themes": "Themes",
+  "notes": "Notes",
+  "cited": "cited",
+  "empty": "No papers yet.",
+  "searches": "Searches",
+  "query": "Query",
+  "source": "Source",
+  "found": "found",
+  "new": "new",
+  "statuses": {
+   "candidate": "candidate",
+   "included": "included",
+   "excluded": "excluded"
+  },
+  "fields": {
+   "summary": "Summary",
+   "method": "Method",
+   "data": "Data",
+   "findings": "Findings",
+   "limitations": "Limitations",
+   "notes": "Notes"
+  }
+ },
+ "report": {
+  "empty": "The text appears here once the writing stage has started.",
+  "downloadMd": "Download Markdown",
+  "downloadBib": "Download BibTeX",
+  "copy": "Copy text",
+  "copied": "Copied",
+  "checkOk": "Check passed: every citation is an included paper of the library.",
+  "issuesHeading": "The check found:",
+  "words": "words",
+  "cited": "papers cited",
+  "draftNote": "Draft: the review is still being written.",
+  "issues": {
+   "unknown_citation": "Citations of papers that are not in the library",
+   "cites_not_included": "Citations of papers that were not included",
+   "included_not_cited": "Included papers that are never cited",
+   "short_section": "Very short section",
+   "missing_abstract": "No abstract yet",
+   "missing_sections": "Sections of the outline not written yet"
+  }
+ },
+ "activity": {
+  "empty": "Nothing yet.",
+  "kinds": {
+   "tool.requested": "Tool",
+   "tool.completed": "Done",
+   "tool.failed": "Tool error",
+   "llm.retry": "Model retried",
+   "approval.requested": "Approval requested",
+   "approval.resolved": "Approval decided",
+   "graph.requested": "Skill graph requested",
+   "graph.completed": "Skill graph finished",
+   "graph.failed": "Skill graph failed",
+   "skill.invoke.opened": "Skill opened",
+   "node.failed": "Stage failed"
+  }
+ },
+ "settings": {
+  "heading": "Settings",
+  "model": "Model",
+  "noModel": "not chosen",
+  "modelHelp": "To choose another model, stop the app and run python run.py --setup in the terminal.",
+  "openalex": "OpenAlex API key (optional)",
+  "openalexHelp": "OpenAlex works without a key, with a shared daily budget. A free key from openalex.org gives you your own budget. It is stored only on this computer.",
+  "keySet": "A key is saved.",
+  "keyNotSet": "No key saved.",
+  "save": "Save",
+  "remove": "Remove key",
+  "saved": "Saved.",
+  "close": "Close"
+ },
+ "skills": {
+  "heading": "Skills and sample graphs",
+  "intro": "Stages open these skills for guidance. Each skill has a sample graph for one kind of review that a stage can run as a child graph; it then appears in the viewer under that stage.",
+  "show": "Show graph",
+  "hide": "Hide graph",
+  "literature-search": {
+   "name": "Doing a literature search",
+   "description": "Queries from concepts and synonyms, choosing sources, reviews, classics and recent work, filling gaps."
+  },
+  "screening-extraction": {
+   "name": "Screening and extraction",
+   "description": "Criteria with exclusion codes, recorded decisions, comparable notes for every included paper."
+  },
+  "review-organization": {
+   "name": "Organizing a review",
+   "description": "Themes, methods, chronology or debates; grouping, comparing and finding gaps."
+  },
+  "review-writing": {
+   "name": "Writing a review",
+   "description": "Structure, synthesis instead of summary, careful claims, Chinese academic writing."
+  },
+  "graphs": {
+   "english-literature": "Research on English literature",
+   "empirical-education": "Empirical education research",
+   "fast-moving-cs": "A fast-moving computer science field",
+   "chinese-gbt7714": "A review in Chinese with GB/T 7714 references"
+  }
+ },
+ "stages": {
+  "scope": {
+   "name": "Scope",
+   "desc": "Research questions, criteria and search queries; you approve them."
+  },
+  "search": {
+   "name": "Search",
+   "desc": "Searches OpenAlex and arXiv; every result goes into the library."
+  },
+  "screen": {
+   "name": "Screen",
+   "desc": "Includes or excludes each candidate, with a reason."
+  },
+  "extract": {
+   "name": "Extract",
+   "desc": "Notes on method, data, findings and limitations of each included paper."
+  },
+  "organize": {
+   "name": "Organize",
+   "desc": "Groups the papers into themes and compares them."
+  },
+  "outline": {
+   "name": "Outline",
+   "desc": "Plans the sections and which papers each cites."
+  },
+  "write": {
+   "name": "Write",
+   "desc": "Writes the sections, citing papers from the library."
+  },
+  "review": {
+   "name": "Review",
+   "desc": "Checks citations and coverage, revises, writes the abstract."
+  }
+ },
+ "graphNodes": {
+  "plan": "Plan query sets",
+  "criticism": "Search criticism",
+  "context": "Search context and debates",
+  "coverage": "Check coverage",
+  "criteria": "PICOS criteria",
+  "title-abstract": "Screen titles and abstracts",
+  "borderline": "Decide unclear cases",
+  "extract": "Extract study data",
+  "timeline": "Timeline and milestones",
+  "taxonomy": "Method families",
+  "compare": "Compare the families",
+  "gaps": "Open problems",
+  "glossary": "Terminology glossary",
+  "draft": "Draft in Chinese",
+  "polish": "Revise the Chinese text"
+ },
+ "errors": {
+  "no_model": "No model is chosen yet. In the terminal, run: python run.py --setup",
+  "network": "The app does not answer. Is python run.py still running?",
+  "generic": "Something went wrong"
+ }
+}

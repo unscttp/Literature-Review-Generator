@@ -1,0 +1,16 @@
+{
+  "id": "lrg-screen",
+  "description": "Stage 3: screen candidates (include/exclude), read records, take notes; the screening-extraction skill and its graphs.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:library.decide",
+    "tool:library.note",
+    "tool:skill.screening-extraction.invoke",
+    "tool:skill.screening-extraction.read",
+    "tool:skill.screening-extraction.finish",
+    "tool:skill.screening-extraction.run_graph"
+  ],
+  "max_tool_risk": "high",
+  "config": {}
+}

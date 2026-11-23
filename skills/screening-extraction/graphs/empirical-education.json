@@ -1,0 +1,111 @@
+{
+  "usage_scenario_file": "empirical-education.md",
+  "usage_scenario_sha256": "75c7f5363716a4dfe67e2662c2db59f0648859096ed9fd0ae3717fe4dbe465a4",
+  "graph": {
+    "nodes": [
+      {
+        "id": "criteria",
+        "type": "stage",
+        "name": "PICOS criteria",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/empirical-education/criteria"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 3,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the empirical-education screening graph. Turn the scope into PICOS criteria for education research: Population (learners or teachers, level, setting), Intervention or phenomenon, Comparison (if any), Outcomes (learning, attainment, motivation, practice ...), Study design (empirical studies - experimental, quasi-experimental, correlational, survey, qualitative, mixed - unless the scope also wants conceptual work). Then list exclusion codes: E1 off topic, E2 wrong population or setting, E3 not empirical, E4 outside years or languages, E5 duplicate or superseded, E6 lower priority. Do not call tools except library_list once to see the pool size. Answer with the criteria and codes."
+        }
+      },
+      {
+        "id": "title-abstract",
+        "type": "stage",
+        "name": "Screen titles and abstracts",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "criteria": "/skill_graphs/empirical-education/criteria"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/empirical-education/title-abstract"
+        },
+        "allowance": "lrg-screen-only",
+        "react": {
+          "max_steps": 24,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the empirical-education screening graph. Screen every candidate: page through library_list (status candidate, detail abstract, offset) and decide with library_decide, 10-40 papers per call. Reasons start with the code from the criteria ('E3: position paper'); includes give the design ('include: quasi-experiment, Year 8'). Leave a paper as candidate with reason 'unclear: ...' only when the abstract does not show the design or population. Answer with the counts per code and the number left unclear."
+        }
+      },
+      {
+        "id": "borderline",
+        "type": "stage",
+        "name": "Decide unclear cases",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "criteria": "/skill_graphs/empirical-education/criteria",
+          "screening": "/skill_graphs/empirical-education/title-abstract"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/empirical-education/borderline"
+        },
+        "allowance": "lrg-screen-only",
+        "react": {
+          "max_steps": 14,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the empirical-education screening graph. Read the records of the papers still candidate (library_list status candidate, then library_get) and include or exclude each with the code. When the record still does not say, include it if the title is clearly an empirical study on the topic, with reason 'include: check full text'. If more papers are included than request.target_papers plus a third, exclude the weakest with E6 (small or descriptive studies, older work superseded by larger ones). Answer with the final counts."
+        }
+      },
+      {
+        "id": "extract",
+        "type": "stage",
+        "name": "Extract study data",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "criteria": "/skill_graphs/empirical-education/criteria"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/empirical-education/extract"
+        },
+        "allowance": "lrg-note-only",
+        "react": {
+          "max_steps": 30,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the empirical-education screening graph. For each included paper (library_list status included; library_get up to 8 at a time) save a library_note in the review language: summary; method = design and analysis; data = participants (number, age or level, country, setting) and period; findings = main results with direction and effect sizes or significance when reported; limitations; notes = intervention details and outcome measures. Write 'not reported' for missing information. Answer with how many studies were extracted and an overview of designs and settings."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "criteria",
+        "to": "title-abstract"
+      },
+      {
+        "from": "title-abstract",
+        "to": "borderline"
+      },
+      {
+        "from": "borderline",
+        "to": "extract"
+      }
+    ],
+    "depth": 1
+  },
+  "start": [
+    "criteria"
+  ],
+  "explanation": "Screen and extract for a review of empirical education research: PICOS criteria with exclusion codes, title-and-abstract screening, full-record decisions on unclear cases, then structured extraction (design, participants, intervention, outcomes, results, limitations). Screening nodes may only read and decide; the extraction node may only read and take notes."
+}

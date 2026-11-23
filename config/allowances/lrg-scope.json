@@ -1,0 +1,12 @@
+{
+  "id": "lrg-scope",
+  "description": "Stage 1: submit the scope for approval; read the search skill's advice.",
+  "actions": [
+    "tool:scope.submit",
+    "tool:skill.literature-search.invoke",
+    "tool:skill.literature-search.read",
+    "tool:skill.literature-search.finish"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

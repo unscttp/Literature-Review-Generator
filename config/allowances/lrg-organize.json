@@ -1,0 +1,15 @@
+{
+  "id": "lrg-organize",
+  "description": "Stage 5: read the library and assign themes; the review-organization skill and its graphs.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:library.tag",
+    "tool:skill.review-organization.invoke",
+    "tool:skill.review-organization.read",
+    "tool:skill.review-organization.finish",
+    "tool:skill.review-organization.run_graph"
+  ],
+  "max_tool_risk": "high",
+  "config": {}
+}

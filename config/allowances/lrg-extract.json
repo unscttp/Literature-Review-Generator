@@ -1,0 +1,15 @@
+{
+  "id": "lrg-extract",
+  "description": "Stage 4: read included papers and save extraction notes; may still exclude.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get",
+    "tool:library.note",
+    "tool:library.decide",
+    "tool:skill.screening-extraction.invoke",
+    "tool:skill.screening-extraction.read",
+    "tool:skill.screening-extraction.finish"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

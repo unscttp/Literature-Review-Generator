@@ -1,0 +1,10 @@
+{
+  "id": "lrg-read",
+  "description": "Skill graph nodes: read the library only.",
+  "actions": [
+    "tool:library.list",
+    "tool:library.get"
+  ],
+  "max_tool_risk": "low",
+  "config": {}
+}

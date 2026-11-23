@@ -1,0 +1,112 @@
+{
+  "usage_scenario_file": "fast-moving-cs.md",
+  "usage_scenario_sha256": "814939ecdc2bdad98810e1a4baf5a1f5ffb7b806c04d50129b7642a752e935fe",
+  "graph": {
+    "nodes": [
+      {
+        "id": "timeline",
+        "type": "stage",
+        "name": "Timeline and milestones",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/fast-moving-cs/timeline"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 8,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the fast-moving-cs organization graph. List the included papers (library_list status included) and order them by year. Mark which are preprints (venue arXiv or type preprint) and which are published. Name the 3-6 milestones that changed the field (a new method, benchmark or result that later papers build on), each with its paper id, judged from titles, abstracts, notes and citation counts. Answer with the timeline by year and the milestones."
+        }
+      },
+      {
+        "id": "taxonomy",
+        "type": "stage",
+        "name": "Method families",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "timeline": "/skill_graphs/fast-moving-cs/timeline"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/fast-moving-cs/taxonomy"
+        },
+        "allowance": "lrg-tag-only",
+        "react": {
+          "max_steps": 14,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the fast-moving-cs organization graph. Group the included papers into 3-6 method families by their core technical idea, not by application. Read records with library_get where the notes are not enough. Tag every included paper with library_tag: its method family first, then optionally 'benchmark' or 'evaluation' for papers that mainly propose benchmarks or evaluations, or 'survey' for surveys. Theme names are in the review language. Answer with each family, its defining idea and its paper ids."
+        }
+      },
+      {
+        "id": "compare",
+        "type": "stage",
+        "name": "Compare the families",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "taxonomy": "/skill_graphs/fast-moving-cs/taxonomy"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/fast-moving-cs/compare"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 10,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the fast-moving-cs organization graph. Compare the method families in a Markdown table: core idea; typical benchmarks and data; reported strengths; limitations; representative papers (ids). Below the table, note where results are not comparable (different benchmarks, settings, model sizes, compute) and where papers disagree. Use only the records and notes (library_get). Answer with the table and the notes."
+        }
+      },
+      {
+        "id": "gaps",
+        "type": "stage",
+        "name": "Open problems",
+        "inputs": {
+          "request": "/request",
+          "scope": "/stages/scope",
+          "timeline": "/skill_graphs/fast-moving-cs/timeline",
+          "taxonomy": "/skill_graphs/fast-moving-cs/taxonomy",
+          "compare": "/skill_graphs/fast-moving-cs/compare"
+        },
+        "outputs": {
+          "answer": "/skill_graphs/fast-moving-cs/gaps"
+        },
+        "allowance": "lrg-read",
+        "react": {
+          "max_steps": 4,
+          "on_step_limit": "answer"
+        },
+        "config": {
+          "instruction": "Node of the fast-moving-cs organization graph. From the timeline, taxonomy and comparison, answer with: the open problems the papers name or leave unanswered; evaluation and reproducibility issues; which directions are changing fastest; and cautions for the review, such as how many included papers are unreviewed preprints and which claims rest only on them."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "timeline",
+        "to": "taxonomy"
+      },
+      {
+        "from": "taxonomy",
+        "to": "compare"
+      },
+      {
+        "from": "compare",
+        "to": "gaps"
+      }
+    ],
+    "depth": 1
+  },
+  "start": [
+    "timeline"
+  ],
+  "explanation": "Organize a review of a fast-moving computer science field: a timeline with milestones and preprint status, a taxonomy of method families (tagged on the papers), a comparison of the families with notes on comparability, and the open problems. Only the taxonomy node may tag papers; the others only read."
+}
