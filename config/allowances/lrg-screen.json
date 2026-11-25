@@ -1,6 +1,6 @@
 {
   "id": "lrg-screen",
-  "description": "Stage 3: screen candidates (include/exclude), read records, take notes; the screening-extraction skill and its graphs.",
+  "description": "Stage 3: screen candidates (include/exclude), read records, take notes; the screening-extraction skill and its graphs; may design its own graph (graph.create).",
   "actions": [
     "tool:library.list",
     "tool:library.get",
@@ -10,7 +10,8 @@
     "tool:skill.screening-extraction.invoke",
     "tool:skill.screening-extraction.read",
     "tool:skill.screening-extraction.finish",
-    "tool:skill.screening-extraction.run_graph"
+    "tool:skill.screening-extraction.run_graph",
+    "tool:graph.create"
   ],
   "max_tool_risk": "high",
   "config": {}

@@ -31,6 +31,11 @@ ROUTES = [
     ("POST", r"/api/models/list", "model_list"),
     ("POST", r"/api/models/check", "model_check"),
     ("POST", r"/api/models/key", "model_key"),
+    (
+        "DELETE",
+        r"/api/skills/(?P<skill>[a-z0-9-]+)/graphs/(?P<graph>[A-Za-z0-9_-]+)",
+        "delete_graph",
+    ),
     ("GET", r"/api/runs", "runs"),
     ("POST", r"/api/runs", "create"),
     ("GET", RUN, "run"),
@@ -126,6 +131,10 @@ class Api:
         body = self._fields(body, ["service"], ["api_key"])
         self.service.models.save_key(body["service"], body.get("api_key"))
         return self.models(None)
+
+    def delete_graph(self, body, skill, graph):
+        self.service.delete_skill_graph(skill, graph)
+        return self.service.workflow_view()
 
     def runs(self, body, **_):
         return {"runs": self.service.list()}

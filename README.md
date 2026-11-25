@@ -25,6 +25,11 @@ what each stage may do, when you are asked, which papers can be cited.
 - **A live workflow viewer.** The eight stages, which one is working and on
   what. When a stage runs one of the skills' sample graphs, that graph appears
   under it with its own nodes.
+- **Stages that design their own graphs.** When no saved graph fits, the
+  search, screening, organizing and writing stages may plan a graph of steps
+  for this review. You see each graph drawn before it runs, with what every
+  step may do, and decide whether it runs and whether it is saved into its
+  skill, where the next review finds it. The generator grows with use.
 - **Skills with sample graphs.** Four Agent Skills guide the stages: doing a
   literature search, screening and extraction, organizing a review and
   writing a review. Each comes with a graph for one kind of review (English
@@ -72,7 +77,9 @@ python run.py --demo
 ```
 
 The demo runs a scripted review on a few made-up example records: no AI, no
-key, no network. It shows every stage, the scope approval and a skill graph.
+key, no network. It shows every stage, the scope approval, a sample graph
+and a graph the organize stage designs and offers to save; run a second demo
+review and the stage reuses the saved graph.
 
 Downloaded the ZIP instead of using git? `install.py` fetches DGS by itself.
 
@@ -83,10 +90,15 @@ Downloaded the ZIP instead of using git? `install.py` fetches DGS by itself.
    the publication years, how many papers to include and the sources.
 2. **Approve the scope.** After a minute the scope appears. Approve it, or
    write what should change and send it back.
-3. **Watch it work.** The *Workflow* tab shows the stages; click one to see its
+3. **Approve the graphs.** When a stage wants to run a graph (a skill's saved
+   graph, or one it designed for this review), it shows you the graph first:
+   its steps, what each may do and why. Approve it, or reject it with a
+   comment and the stage continues without it. After a designed graph has
+   worked, you decide whether to save it into the skill.
+4. **Watch it work.** The *Workflow* tab shows the stages; click one to see its
    result. *Library* lists every paper found, with the screening decision and
    its reason, the notes and the themes. *Activity* lists each tool call.
-4. **Read and download.** *Report* shows the review as it is being written,
+5. **Read and download.** *Report* shows the review as it is being written,
    with the result of the citation check. Download it as Markdown and the
    references as BibTeX.
 
@@ -170,6 +182,36 @@ verifies (its usage scenario is hashed) and that a stage may run with
 | screening-extraction | `empirical-education` | Empirical studies in education: PICOS criteria with exclusion codes, title-and-abstract screening, unclear cases, structured extraction |
 | review-organization | `fast-moving-cs` | Computer science fields that move in months: timeline and milestones, method families, comparison, open problems and preprint caveats |
 | review-writing | `chinese-gbt7714` | Reviews in Simplified Chinese with GB/T 7714: glossary, draft in academic Chinese, revision pass |
+
+### Graphs the stages design
+
+Search, Screen, Organize and Write have `allow_create_graph: true` and
+`graph.create` in their allowances. Their instructions say: run a saved graph
+of the skill if one fits; otherwise, when the work splits into clear steps,
+design a graph for this review with `graph_create`: 2-5 nodes of type `stage`,
+each with its instruction and one of the narrower allowances the instruction
+names (for example `lrg-tag-only` in Organize: read the library and assign
+themes, nothing else), plus `save_to_skill` and a usage scenario in Markdown.
+Then DGS:
+
+1. **checks** the proposal: the node types must be allowed in generated graphs
+   and every node's allowance must be a subset of the stage's; otherwise the
+   call fails and the model is told why;
+2. **asks you** (`graph_creation_human_check`, on for every graph): the
+   approval card draws the graph with the viewer and lists each step's
+   permissions and instruction. Rejecting it does not fail the stage: the
+   model gets your comment and continues without the graph;
+3. **runs** it as a child task of the stage, shown under the stage in the
+   viewer as *Graph designed by the model*;
+4. **asks again** before saving it (`graph_save_human_check`), and writes it
+   to `data/skills/<skill>/graphs/<id>.json` with its usage scenario;
+5. **offers it** to later reviews: `skill.<name>.invoke` lists it next to the
+   sample graph, with its run history and a hint when the model or the
+   permissions changed since it last worked. The start page lists saved
+   graphs with *saved from a review*; **Remove** deletes one.
+
+The new-review form has *Stages may design their own graphs* (on by default);
+switched off, the stages can still run saved graphs but not design new ones.
 
 A graph's nodes get narrower allowances than the stage that runs it (DGS
 refuses to run a graph that would get more). After each run DGS records in

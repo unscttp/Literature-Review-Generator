@@ -22,4 +22,4 @@ except ImportError:
         ) from None
     sys.path.insert(0, str(DGS))
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"

@@ -1,6 +1,6 @@
 {
   "id": "lrg-search",
-  "description": "Stage 2: search OpenAlex and arXiv (adds to the library), read the library, use the literature-search skill and its graphs.",
+  "description": "Stage 2: search OpenAlex and arXiv (adds to the library), read the library, use the literature-search skill and its graphs; may design its own graph (graph.create).",
   "actions": [
     "tool:lit.search_openalex",
     "tool:lit.search_arxiv",
@@ -9,7 +9,8 @@
     "tool:skill.literature-search.invoke",
     "tool:skill.literature-search.read",
     "tool:skill.literature-search.finish",
-    "tool:skill.literature-search.run_graph"
+    "tool:skill.literature-search.run_graph",
+    "tool:graph.create"
   ],
   "max_tool_risk": "high",
   "config": {}

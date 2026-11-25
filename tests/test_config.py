@@ -47,14 +47,16 @@ class ConfigTests(unittest.TestCase):
         )
 
     def test_every_allowed_action_exists(self):
-        known = set(TOOL_NAMES) | skill_tools()
+        known = set(TOOL_NAMES) | skill_tools() | {"graph.create"}  # a DGS tool
         for allowance in allowances().sets.values():
             for action in allowance.actions:
                 self.assertIn(action.removeprefix("tool:"), known, f"{allowance.id}: {action}")
 
     def test_instructions_only_name_allowed_tools(self):
         registry = allowances()
-        known = {function(name): name for name in set(TOOL_NAMES) | skill_tools()}
+        known = {
+            function(name): name for name in set(TOOL_NAMES) | skill_tools() | {"graph.create"}
+        }
         graphs = [workflow()] + [
             load_skill_graph(ROOT / "skills" / skill, path.stem)["graph"]
             for skill in SKILLS
@@ -87,6 +89,21 @@ class ConfigTests(unittest.TestCase):
             for node in graph["graph"]["nodes"]:
                 registry.resolve(node["allowance"]).assert_subset_of(parent)
                 self.assertEqual(node["type"], "stage")
+
+    def test_designed_graphs_can_use_the_allowances_they_are_offered(self):
+        registry = allowances()
+        designers = [n for n in workflow()["nodes"] if n.get("allow_create_graph")]
+        self.assertEqual([n["id"] for n in designers], ["search", "screen", "organize", "write"])
+        for node in designers:
+            parent = registry.resolve(node["allowance"])
+            self.assertIn("tool:graph.create", parent.actions)
+            offered = re.findall(
+                r"\b(lrg-[a-z-]+) \(|or (lrg-[a-z-]+)", node["config"]["instruction"]
+            )
+            names = {a or b for a, b in offered}
+            self.assertTrue(names, node["id"])
+            for name in names:
+                registry.resolve(name).assert_subset_of(parent)
 
     def test_sample_graph_files_match_their_script(self):
         import importlib.util

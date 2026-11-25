@@ -146,7 +146,8 @@ window.GraphViewer = (() => {
       group.appendChild(el("rect", { width: NODE_W, height: NODE_H, rx: 9 }));
       if (options.numbered) group.appendChild(el("text", { x: 12, y: 21, class: "number" }, String(index + 1)));
       group.appendChild(el("text", { x: options.numbered ? 28 : 12, y: 22, class: "title" }, clip(name, options.numbered ? 17 : 19)));
-      group.appendChild(el("text", { x: 12, y: 46, class: "sub" }, nodeSubtitle(node, options.t)));
+      const subtitle = options.nodeSubtitle ? options.nodeSubtitle(graph, node) : nodeSubtitle(node, options.t);
+      group.appendChild(el("text", { x: 12, y: 46, class: "sub" }, clip(subtitle, 27)));
       group.appendChild(el("circle", { cx: NODE_W - 13, cy: 15, r: 5, class: "status-dot" }));
       const select = () => options.onSelect && options.onSelect(graph, node);
       group.addEventListener("click", select);

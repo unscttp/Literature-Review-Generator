@@ -23,8 +23,18 @@ class PipelineTests(ServiceCase):
         [approval] = summary["approvals"]
         self.assertEqual(approval["scope"]["notes"], "Revised: Add Chinese criticism")
         service.decide(run["id"], approval["id"], True)
-        summary = self.wait(run["id"])
+        summary = self.finish(run["id"])  # approve every graph and the save
         self.assertEqual(summary["status"], "completed", summary.get("error"))
+        # Every graph was reviewed: the bundled search graph, the graph the
+        # organize stage designed, and saving that graph into its skill.
+        self.assertEqual(
+            [(a["node"], a["kind"], (a["details"] or {}).get("skill_graph")) for a in self.decided],
+            [
+                ("search", "graph_creation", "english-literature"),
+                ("organize", "graph_creation", None),
+                ("organize", "skill_graph_save", None),
+            ],
+        )
 
         self.assertEqual(summary["scope"]["notes"], "Revised: Add Chinese criticism")
         self.assertEqual(len(summary["stages"]), 8)
@@ -44,11 +54,16 @@ class PipelineTests(ServiceCase):
         self.assertIn("@article{example2015irony", (folder / "references.bib").read_text("utf-8"))
 
         graph = service.graph(run["id"])
-        root, child = graph["graphs"]
+        root, child, designed = graph["graphs"]
         self.assertEqual([n["status"] for n in root["nodes"]], ["completed"] * 8)
         self.assertEqual(child["parent"]["node"], "search")
         self.assertEqual(child["title"], "english-literature")
+        self.assertFalse(child["designed"])
         self.assertEqual({n["status"] for n in child["nodes"]}, {"completed"})
+        self.assertEqual(designed["parent"]["node"], "organize")
+        self.assertTrue(designed["designed"])
+        self.assertEqual((designed["status"], designed["saved"]), ("completed", "saved"))
+        self.assertEqual([n["id"] for n in designed["nodes"]], ["demo-themes", "demo-gaps"])
         # DGS recorded the graph's run in the installed skill.
         meta = service.skills_dir / "literature-search" / "graphs" / "english-literature.meta.json"
         meta = json.loads(meta.read_text())
@@ -63,8 +78,7 @@ class PipelineTests(ServiceCase):
 
 class RunControlTests(ServiceCase):
     def approve(self, run_id):
-        summary = self.wait(run_id)
-        self.service.decide(run_id, summary["approvals"][0]["id"], True)
+        self.finish(run_id)
 
     def test_requests_are_validated(self):
         from lrg.pipeline import RunError
@@ -284,9 +298,7 @@ class GateTests(ServiceCase):
     """A stage that did not do its work cannot hand on a result (the 0-included run)."""
 
     def approve_scope(self, service, run_id):
-        summary = self.wait(run_id)
-        service.decide(run_id, summary["approvals"][0]["id"], True)
-        return self.wait(run_id)
+        return self.finish(run_id)
 
     def test_screening_that_decides_nothing_stops_the_run(self):
         from lrg.demo import answer, demo_script
@@ -339,3 +351,80 @@ class GateTests(ServiceCase):
         self.assertEqual(summary["status"], "failed")
         self.assertIn("missing_abstract", summary["error"])
         self.assertFalse(service.report(run["id"])["check"]["complete"])
+
+
+class DesignedGraphTests(ServiceCase):
+    """A stage designs a graph, the user reviews it, it runs, is saved and reused."""
+
+    def test_saved_graph_is_reused_by_the_next_review(self):
+        from lrg.demo import DEMO_GRAPH_TITLE
+
+        service = self.make_service()
+        first = service.create({"topic": "Irony in Austen"})
+        self.assertEqual(self.finish(first["id"])["status"], "completed")
+        skills = {s["name"]: s for s in service.workflow_view()["skills"]}
+        graphs = skills["review-organization"]["graphs"]
+        saved = next(g for g in graphs if g["title"] == DEMO_GRAPH_TITLE)
+        self.assertFalse(saved["bundled"])
+        self.assertEqual(saved["runs"], 1)  # the run it was saved from
+        self.assertTrue(next(g for g in graphs if g["id"] == "fast-moving-cs")["bundled"])
+
+        self.decided = []
+        second = service.create({"topic": "Irony in Austen"})
+        self.assertEqual(self.finish(second["id"])["status"], "completed")
+        organize = [a for a in self.decided if a["node"] == "organize"]
+        self.assertEqual(len(organize), 1)  # run the saved graph; nothing new to save
+        self.assertEqual(organize[0]["details"]["skill_graph"], saved["id"])
+        self.assertEqual(organize[0]["skill_graph_title"], DEMO_GRAPH_TITLE)
+        reused = service.graph(second["id"])["graphs"][2]
+        self.assertEqual(
+            (reused["designed"], reused["skill_graph_title"]), (False, DEMO_GRAPH_TITLE)
+        )
+        skills = {s["name"]: s for s in service.workflow_view()["skills"]}
+        again = next(g for g in skills["review-organization"]["graphs"] if g["id"] == saved["id"])
+        self.assertEqual(again["runs"], 2)
+
+        # Saved graphs can be removed; the bundled samples cannot.
+        from lrg.pipeline import RunError
+
+        with self.assertRaises(RunError):
+            service.delete_skill_graph("review-organization", "fast-moving-cs")
+        service.delete_skill_graph("review-organization", saved["id"])
+        skills = {s["name"]: s for s in service.workflow_view()["skills"]}
+        self.assertEqual(
+            [g["id"] for g in skills["review-organization"]["graphs"]], ["fast-moving-cs"]
+        )
+
+    def test_a_rejected_graph_lets_the_stage_go_on(self):
+        service = self.make_service()
+        run = service.create({"topic": "Irony in Austen"})
+
+        def decide(approval):
+            if approval["kind"] == "graph_creation" and approval["node"] == "organize":
+                return False, "Assign the themes yourself."
+            return True, ""
+
+        summary = self.finish(run["id"], decide)
+        self.assertEqual(summary["status"], "completed", summary.get("error"))
+        self.assertNotIn("skill_graph_save", [a["kind"] for a in self.decided])
+        designed = service.graph(run["id"])["graphs"][2]
+        self.assertEqual(designed["status"], "rejected")
+        self.assertTrue(all(n["status"] == "pending" for n in designed["nodes"]))  # never ran
+        kinds = [a["kind"] for a in summary["activity"]]
+        self.assertIn("graph.rejected", kinds)
+        organize_calls = [n for n in self.model.tools if n[0] == "organize"]
+        self.assertTrue(organize_calls)
+
+    def test_designing_graphs_can_be_switched_off(self):
+        service = self.make_service()
+        run = service.create({"topic": "Irony in Austen", "design_graphs": False})
+        summary = self.finish(run["id"])
+        self.assertEqual(summary["status"], "completed", summary.get("error"))
+        self.assertNotIn("organize", [a["node"] for a in self.decided])
+        offered = {tool for node, tools in self.model.tools if node == "organize" for tool in tools}
+        self.assertNotIn("graph.create", offered)
+        self.assertIn("skill.review-organization.run_graph", offered)  # saved graphs still run
+        from lrg.pipeline import RunError
+
+        with self.assertRaises(RunError):
+            service.create({"topic": "Irony in Austen", "design_graphs": "yes"})

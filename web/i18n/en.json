@@ -27,7 +27,9 @@
   "notesPlaceholder": "Focus, things to leave out, the readers, the length ...",
   "start": "Start the review",
   "starting": "Starting ...",
-  "budget": "Up to about {calls} model calls for the eight stages (their step limits grow with the number of papers), plus up to {graph} for each skill graph a stage runs. Most reviews need fewer; check your provider's rate limits and prices."
+  "budget": "Up to about {calls} model calls for the eight stages (their step limits grow with the number of papers), plus up to {graph} for each skill graph a stage runs. Most reviews need fewer; check your provider's rate limits and prices.",
+  "designGraphs": "Stages may design their own graphs",
+  "designGraphsHelp": "When none of a skill's saved graphs fits, the search, screening, organizing and writing stages may plan a graph of steps for this review. You review every graph before it runs and decide whether to save it for later reviews."
  },
  "options": {
   "language": {
@@ -57,7 +59,10 @@
   "failed": "Failed",
   "cancelled": "Cancelled",
   "interrupted": "Interrupted",
-  "idle": "Not started"
+  "idle": "Not started",
+  "awaiting_review": "Waiting for your review",
+  "starting": "Starting",
+  "rejected": "Rejected"
  },
  "run": {
   "model": "Model",
@@ -189,7 +194,11 @@
    "graph.failed": "Skill graph failed",
    "skill.invoke.opened": "Skill opened",
    "node.failed": "Stage failed",
-   "react.result_rejected": "Result not accepted"
+   "react.result_rejected": "Result not accepted",
+   "graph.created": "Graph approved",
+   "graph.rejected": "Graph rejected",
+   "skill.graph.saved": "Graph saved into skill",
+   "skill.graph.save_declined": "Graph not saved"
   }
  },
  "settings": {
@@ -333,5 +342,43 @@
   "openai": "from platform.openai.com",
   "deepseek": "from platform.deepseek.com",
   "custom": "if the API needs one"
+ },
+ "graphs": {
+  "approve": "Approve and run",
+  "reject": "Reject",
+  "save": "Save into the skill",
+  "dontSave": "Don't save",
+  "commentPlaceholder": "Optional: why not, or what the stage should do instead.",
+  "steps": "Each step: what it may do and its instructions",
+  "designedTitle": "The {stage} stage designed a graph for this review",
+  "designedIntro": "It runs as a child graph of the stage. Each step may only use the permissions shown, and none more than the stage itself has. Approve to run it; reject (with a comment, if you like) to have the stage continue without it.",
+  "runSavedTitle": "Run the saved graph “{title}”?",
+  "runSavedIntro": "The {stage} stage wants to run this graph from the skill “{skill}”. Approve to run it; reject to have the stage work without it.",
+  "saveTitle": "Save this graph into the skill “{skill}”?",
+  "saveIntro": "The graph worked in this review. Saved, it is offered to later reviews (with its run history), and the start page lists it, where you can remove it again.",
+  "explanation": "What it does",
+  "scenario": "When to use it (saved with the graph in “{skill}”)",
+  "designedCaption": "Graph designed by the model",
+  "savedInto": "saved into “{skill}”",
+  "savedBadge": "saved from a review",
+  "runs": "runs: {count}",
+  "remove": "Remove",
+  "confirmRemove": "Remove the saved graph “{title}”? Later reviews will no longer be offered it."
+ },
+ "allowances": {
+  "lrg-read": "may read the library",
+  "lrg-search-only": "may search OpenAlex and arXiv and list the library",
+  "lrg-screen-only": "may read the library and include or exclude papers",
+  "lrg-note-only": "may read the library and save notes",
+  "lrg-tag-only": "may read the library and assign themes",
+  "lrg-write-only": "may read the library and outline and write sections",
+  "lrg-scope": "stage permissions: submit the scope",
+  "lrg-search": "stage permissions: search",
+  "lrg-screen": "stage permissions: screen",
+  "lrg-extract": "stage permissions: extract",
+  "lrg-organize": "stage permissions: organize",
+  "lrg-outline": "stage permissions: outline",
+  "lrg-write": "stage permissions: write",
+  "lrg-review": "stage permissions: review"
  }
 }

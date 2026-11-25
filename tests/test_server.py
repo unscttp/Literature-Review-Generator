@@ -52,9 +52,29 @@ class ServerTests(ServiceCase):
             f"/api/runs/{run['id']}/approvals/{approval}", "POST", {"approved": True}
         )
         self.assertEqual(status, 200)
-        self.wait(run["id"])
+        # Approve the graphs and the save over HTTP too.
+        while (summary := self.wait(run["id"]))["status"] == "waiting":
+            for approval in summary["approvals"]:
+                status, _ = self.json(
+                    f"/api/runs/{run['id']}/approvals/{approval['id']}", "POST", {"approved": True}
+                )
+                self.assertEqual(status, 200)
+        self.assertEqual(summary["status"], "completed", summary.get("error"))
         status, graph = self.json(f"/api/runs/{run['id']}/graph")
         self.assertEqual(len(graph["graphs"][0]["nodes"]), 8)
+        self.assertEqual([g["designed"] for g in graph["graphs"][1:]], [False, True])
+        status, view = self.json("/api/workflow")
+        saved = [g for s in view["skills"] for g in s["graphs"] if not g["bundled"]]
+        self.assertEqual(len(saved), 1)
+        status, error = self.json("/api/skills/review-organization/graphs/fast-moving-cs", "DELETE")
+        self.assertEqual((status, error["code"]), (400, "invalid"))
+        status, view = self.json(
+            f"/api/skills/review-organization/graphs/{saved[0]['id']}", "DELETE"
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(all(g["bundled"] for s in view["skills"] for g in s["graphs"]))
+        status, _ = self.json("/api/skills/review-organization/graphs/nope", "DELETE")
+        self.assertEqual(status, 404)
         status, library = self.json(f"/api/runs/{run['id']}/library")
         self.assertEqual(library["counts"]["included"], 2)
         status, headers, body = self.request(f"/api/runs/{run['id']}/report.md")

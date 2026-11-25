@@ -353,3 +353,15 @@ dialog::backdrop { background: rgba(10, 15, 25, 0.45); }
   .activity li { grid-template-columns: 4.5em 1fr; }
   .activity .node { display: none; }
 }
+
+/* -- graphs the model designs ------------------------------------------------- */
+
+.check-field { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.check-field input { width: auto; margin-top: 4px; }
+.badge.saved { margin-left: 6px; background: var(--accent-soft); color: var(--accent); }
+.graph-steps { padding-left: 1.3em; margin: 6px 0 0; }
+.graph-steps li { margin-bottom: 8px; }
+.graph-steps p { margin: 2px 0 0; color: var(--muted); }
+.approval details { margin: 8px 0; }
+.approval summary { cursor: pointer; color: var(--accent); }
+.scenario { background: var(--surface-2); border-radius: 8px; padding: 8px 12px; margin-top: 6px; }

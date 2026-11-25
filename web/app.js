@@ -118,6 +118,11 @@
         h("label", {}, h("input", { type: "checkbox", name: "sources", value, checked: initial.has(value) }), t(`options.sources.${value}`)),
       ),
     );
+    const design = document.querySelector("input[name=design_graphs]");
+    if (!design.dataset.set) {
+      design.checked = info.defaults.design_graphs !== false;
+      design.dataset.set = "1";
+    }
     const target = document.querySelector("input[name=target_papers]");
     if (!target.value) target.value = info.defaults.target_papers;
     renderBudget();
@@ -401,8 +406,21 @@
       );
       for (const graph of skill.graphs) {
         const open = state.openSkillGraph === graph.id;
+        const name = graph.bundled ? graphTitle(graph.id) : graph.title;
         card.append(
-          h("p", { class: "graph-name" }, "◇ ", graphTitle(graph.id)),
+          h("p", { class: "graph-name" }, graph.bundled ? "◇ " : "◆ ", name,
+            graph.bundled ? null : h("span", { class: "badge saved" }, t("graphs.savedBadge")),
+            graph.runs ? h("span", { class: "muted small" }, ` · ${t("graphs.runs", { count: graph.runs })}`) : null),
+          graph.bundled ? null : h("button", {
+            class: "ghost danger",
+            onclick: async () => {
+              if (!confirm(t("graphs.confirmRemove", { title: graph.title }))) return;
+              try {
+                state.overview = await api(`/api/skills/${skill.name}/graphs/${graph.id}`, { method: "DELETE" });
+                renderOverview();
+              } catch (error) { alert(errorText(error)); }
+            },
+          }, t("graphs.remove")),
           h("button", {
             class: "ghost",
             "aria-expanded": String(open),
@@ -414,7 +432,7 @@
       for (const graph of skill.graphs) {
         if (state.openSkillGraph !== graph.id) continue;
         const area = h("div", { class: "card skill-graph" },
-          h("h3", {}, `${t("viewer.skillGraph")}: ${graphTitle(graph.id)}`),
+          h("h3", {}, `${t("viewer.skillGraph")}: ${graph.bundled ? graphTitle(graph.id) : graph.title}`),
           h("p", { class: "muted small" }, graph.explanation),
         );
         const holder = h("div", { class: "graph-area" });
@@ -422,7 +440,9 @@
         list.appendChild(area);
         GraphViewer.render(holder, { graphs: [{ ...graph, parent: null, depth: 0, id: graph.id }] }, {
           t, nodeName: (g, node) => (I18n.has(`graphNodes.${node.id}`) ? t(`graphNodes.${node.id}`) : node.name),
-          nodeDescription: () => "", legend: false, numbered: false,
+          nodeDescription: (g, node) => [allowanceText(node.allowance), node.instruction].filter(Boolean).join("\n"),
+          nodeSubtitle: (g, node) => allowanceText(node.allowance),
+          legend: false, numbered: false,
         });
       }
     }
@@ -444,6 +464,7 @@
       sources: data.getAll("sources"),
       notes: (data.get("notes") || "").trim(),
     };
+    body.design_graphs = data.get("design_graphs") === "on";
     if (!state.models?.demo) body.model = modelChoice();
     const error = $("form-error");
     error.hidden = true;
@@ -586,13 +607,15 @@
             scope.notes ? [h("dt", {}, t("approval.notes")), h("dd", {}, scope.notes)] : null,
           ),
         );
+      } else if (approval.kind === "graph_creation" || approval.kind === "skill_graph_save") {
+        card.append(...graphReview(approval));
       } else {
         card.append(h("h2", {}, t("approval.other")), h("pre", {}, JSON.stringify(approval.details, null, 2)));
       }
       const comment = h("textarea", { rows: 2, placeholder: t("approval.commentPlaceholder"), "aria-label": t("approval.requestChanges") });
       const note = h("p", { class: "notice error", hidden: true });
       const decide = async (approved) => {
-        if (!approved && approval.can_revise && !comment.value.trim()) {
+        if (!approved && approval.kind === "scope_review" && !comment.value.trim()) {
           note.textContent = t("approval.commentNeeded");
           note.hidden = false;
           comment.focus();
@@ -614,16 +637,81 @@
           card.querySelectorAll("button").forEach((button) => { button.disabled = false; });
         }
       };
-      const isScope = approval.kind === "scope_review";
-      if (approval.can_revise) card.append(comment);
+      const labels = {
+        scope_review: ["approval.approve", "approval.requestChanges"],
+        graph_creation: ["graphs.approve", "graphs.reject"],
+        skill_graph_save: ["graphs.save", "graphs.dontSave"],
+      }[approval.kind] || ["approval.approveOther", "approval.rejectOther"];
+      if (approval.kind === "graph_creation") comment.placeholder = t("graphs.commentPlaceholder");
+      if (approval.can_revise && approval.kind !== "skill_graph_save") card.append(comment);
       card.append(note, h("div", { class: "actions" },
-        h("button", { class: "primary", onclick: () => decide(true) }, isScope ? t("approval.approve") : t("approval.approveOther")),
-        approval.can_revise
-          ? h("button", { onclick: () => decide(false) }, t("approval.requestChanges"))
-          : h("button", { class: "danger", onclick: () => decide(false) }, t("approval.rejectOther")),
+        h("button", { class: "primary", onclick: () => decide(true) }, t(labels[0])),
+        h("button", { class: approval.can_revise ? "" : "danger", onclick: () => decide(false) }, t(labels[1])),
       ));
       box.appendChild(card);
     }
+  }
+
+  function allowanceText(id) {
+    return I18n.has(`allowances.${id}`) ? t(`allowances.${id}`) : id || "—";
+  }
+
+  /** A graph's nodes drawn with the viewer, then each step: what it may do and its instruction. */
+  function graphPreview(graph, start) {
+    const holder = h("div", { class: "graph-area" });
+    const nodes = graph.nodes.map((node) => ({
+      id: node.id, name: node.name || node.id, allowance: node.allowance, status: "pending",
+    }));
+    GraphViewer.render(holder, { graphs: [{ id: "preview", title: "", parent: null, depth: 0, start, nodes, edges: graph.edges }] }, {
+      t,
+      nodeName: (g, node) => node.name,
+      nodeDescription: (g, node) => allowanceText(node.allowance),
+      nodeSubtitle: (g, node) => allowanceText(node.allowance),
+      legend: false,
+      numbered: false,
+    });
+    const steps = h("ol", { class: "graph-steps" }, graph.nodes.map((node) =>
+      h("li", {},
+        h("strong", {}, node.name || node.id),
+        h("span", { class: "muted small" }, ` — ${allowanceText(node.allowance)}`),
+        (node.config || {}).instruction ? h("p", { class: "small" }, node.config.instruction) : null,
+      )));
+    return [holder, h("details", {}, h("summary", {}, t("graphs.steps")), steps)];
+  }
+
+  function graphReview(approval) {
+    const details = approval.details || {};
+    const stage = stageName(approval.node);
+    const skill = details.skill?.name;
+    const skillName = skill ? t(`skills.${skill}.name`) : "";
+    const saved = details.skill_graph;
+    const title = saved ? (I18n.has(`skills.graphs.${saved}`) ? t(`skills.graphs.${saved}`) : approval.skill_graph_title || saved) : "";
+    const parts = [];
+    if (approval.kind === "skill_graph_save") {
+      parts.push(
+        h("h2", {}, t("graphs.saveTitle", { skill: skillName })),
+        h("p", { class: "muted" }, t("graphs.saveIntro")),
+      );
+    } else if (saved) {
+      parts.push(
+        h("h2", {}, t("graphs.runSavedTitle", { title })),
+        h("p", { class: "muted" }, t("graphs.runSavedIntro", { stage, skill: skillName })),
+      );
+    } else {
+      parts.push(
+        h("h2", {}, t("graphs.designedTitle", { stage })),
+        h("p", { class: "muted" }, t("graphs.designedIntro")),
+      );
+    }
+    parts.push(h("p", {}, h("strong", {}, `${t("graphs.explanation")}: `), details.explanation || ""));
+    parts.push(...graphPreview(details.graph || { nodes: [], edges: [] }, details.start || []));
+    if (details.usage_scenario && !saved) {
+      const scenario = h("div", { class: "scenario" });
+      scenario.innerHTML = Markdown.render(details.usage_scenario); // escaped by the renderer
+      parts.push(h("details", { open: approval.kind === "skill_graph_save" },
+        h("summary", {}, t("graphs.scenario", { skill: skillName })), scenario));
+    }
+    return parts;
   }
 
   function renderGraph() {
@@ -635,8 +723,20 @@
       selected: state.selected,
       caption: (graph) => {
         if (!graph.parent) return null;
+        const savedNote = graph.saved === "saved"
+          ? ` · ${t("graphs.savedInto", { skill: t(`skills.${graph.skill}.name`) })}`
+          : "";
+        if (graph.designed) {
+          return [
+            h("strong", {}, t("graphs.designedCaption")),
+            ` — ${t("viewer.runBy")} ${stageName(graph.parent.node)} · `,
+            t(`status.${graph.status}`) !== `status.${graph.status}` ? t(`status.${graph.status}`) : graph.status,
+            savedNote,
+          ];
+        }
+        const title = I18n.has(`skills.graphs.${graph.title}`) ? t(`skills.graphs.${graph.title}`) : graph.skill_graph_title || graph.title;
         return [
-          h("strong", {}, `${t("viewer.skillGraph")}: ${graphTitle(graph.title)}`),
+          h("strong", {}, `${t("viewer.skillGraph")}: ${title}`),
           ` — ${t("viewer.runBy")} ${stageName(graph.parent.node)} · `,
           t(`status.${graph.status}`) !== `status.${graph.status}` ? t(`status.${graph.status}`) : graph.status,
         ];
@@ -849,6 +949,8 @@
       $("new-view").hidden = false;
       $("run-view").hidden = true;
       renderOverview();
+      // Reviews may have saved graphs into the skills since the page was loaded.
+      api("/api/workflow").then((view) => { state.overview = view; renderOverview(); }).catch(() => {});
     }
     renderRuns();
   }

@@ -1,6 +1,6 @@
 {
   "id": "lrg-organize",
-  "description": "Stage 5: read the library and assign themes; the review-organization skill and its graphs.",
+  "description": "Stage 5: read the library and assign themes; the review-organization skill and its graphs; may design its own graph (graph.create).",
   "actions": [
     "tool:library.list",
     "tool:library.get",
@@ -8,7 +8,8 @@
     "tool:skill.review-organization.invoke",
     "tool:skill.review-organization.read",
     "tool:skill.review-organization.finish",
-    "tool:skill.review-organization.run_graph"
+    "tool:skill.review-organization.run_graph",
+    "tool:graph.create"
   ],
   "max_tool_risk": "high",
   "config": {}

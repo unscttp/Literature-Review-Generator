@@ -8,9 +8,10 @@
     "prompt_max_value_chars": 16000,
     "prompt_budget_chars": 60000,
     "prompt_max_events": 60,
-    "graph_creation_human_check": false,
+    "graph_creation_human_check": true,
     "graph_max_steps": 120,
-    "knowledge_consolidate_on_finish": false
+    "knowledge_consolidate_on_finish": false,
+    "graph_save_human_check": true
   },
   "steps_per_paper": {
     "search": 0.5,
@@ -28,6 +29,7 @@
     "sources": [
       "openalex",
       "arxiv"
-    ]
+    ],
+    "design_graphs": true
   }
 }

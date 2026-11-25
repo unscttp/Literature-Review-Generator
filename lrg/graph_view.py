@@ -100,6 +100,8 @@ def _edges(definitions: list[dict]) -> list[dict]:
 
 
 def _graph_status(record: dict, child: Task | None) -> str:
+    if record.get("rejected"):
+        return "rejected"
     if record.get("error"):
         return "failed"
     if record.get("result") is not None:
@@ -126,6 +128,8 @@ def _children(task: Task, graph_id: str, live: LiveTasks, depth: int) -> list[di
                 {
                     "id": record["id"],
                     "title": record.get("skill_graph") or "Generated graph",
+                    # Designed by the model in this review (graph.create), not a saved graph.
+                    "designed": record.get("skill_graph") is None,
                     "parent": {"graph": graph_id, "node": execution.node_id},
                     "depth": depth,
                     "explanation": record.get("explanation"),

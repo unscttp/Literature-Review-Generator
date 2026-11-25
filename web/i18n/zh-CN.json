@@ -27,7 +27,9 @@
   "notesPlaceholder": "侧重点、需要排除的内容、目标读者、篇幅等",
   "start": "开始综述",
   "starting": "正在开始……",
-  "budget": "八个阶段最多约 {calls} 次模型调用（步数上限随文献数量增加）；阶段每运行一张技能图，最多再增加 {graph} 次。大多数综述用不了这么多；请留意服务商的速率限制和费用。"
+  "budget": "八个阶段最多约 {calls} 次模型调用（步数上限随文献数量增加）；阶段每运行一张技能图，最多再增加 {graph} 次。大多数综述用不了这么多；请留意服务商的速率限制和费用。",
+  "designGraphs": "允许各阶段自行设计子图",
+  "designGraphsHelp": "当技能中保存的图都不适用时，检索、筛选、组织和撰写阶段可以为这篇综述规划一张由若干步骤组成的图。每张图运行前都由你审核，并由你决定是否保存供以后的综述使用。"
  },
  "options": {
   "language": {
@@ -57,7 +59,10 @@
   "failed": "失败",
   "cancelled": "已取消",
   "interrupted": "已中断",
-  "idle": "未开始"
+  "idle": "未开始",
+  "awaiting_review": "等待你审核",
+  "starting": "正在启动",
+  "rejected": "已拒绝"
  },
  "run": {
   "model": "模型",
@@ -189,7 +194,11 @@
    "graph.failed": "技能图失败",
    "skill.invoke.opened": "打开技能",
    "node.failed": "阶段失败",
-   "react.result_rejected": "结果未被接受"
+   "react.result_rejected": "结果未被接受",
+   "graph.created": "已批准子图",
+   "graph.rejected": "已拒绝子图",
+   "skill.graph.saved": "子图已保存到技能",
+   "skill.graph.save_declined": "未保存子图"
   }
  },
  "settings": {
@@ -333,5 +342,43 @@
   "openai": "在 platform.openai.com 获取",
   "deepseek": "在 platform.deepseek.com 获取",
   "custom": "仅在该 API 需要时填写"
+ },
+ "graphs": {
+  "approve": "批准并运行",
+  "reject": "拒绝",
+  "save": "保存到技能",
+  "dontSave": "不保存",
+  "commentPlaceholder": "可选：说明原因，或者该阶段应当怎么做。",
+  "steps": "每一步：可以做什么，以及它的指令",
+  "designedTitle": "“{stage}”阶段为这篇综述设计了一张图",
+  "designedIntro": "它会作为该阶段的子图运行。每一步只能使用所示的权限，且都不超过该阶段本身的权限。批准则运行；拒绝（可附意见）则该阶段不使用这张图继续工作。",
+  "runSavedTitle": "运行已保存的图“{title}”？",
+  "runSavedIntro": "“{stage}”阶段想运行技能“{skill}”中的这张图。批准则运行；拒绝则该阶段不使用它继续工作。",
+  "saveTitle": "把这张图保存到技能“{skill}”中？",
+  "saveIntro": "这张图在本次综述中运行成功。保存后，以后的综述会看到它（连同运行记录）；首页会列出它，你也可以在那里删除它。",
+  "explanation": "作用",
+  "scenario": "适用场景（与图一起保存在“{skill}”中）",
+  "designedCaption": "模型设计的图",
+  "savedInto": "已保存到“{skill}”",
+  "savedBadge": "保存自综述",
+  "runs": "已运行 {count} 次",
+  "remove": "删除",
+  "confirmRemove": "删除已保存的图“{title}”？以后的综述将不再看到它。"
+ },
+ "allowances": {
+  "lrg-read": "可以读取文献库",
+  "lrg-search-only": "可以检索 OpenAlex 和 arXiv，并列出文献库",
+  "lrg-screen-only": "可以读取文献库，并纳入或排除文献",
+  "lrg-note-only": "可以读取文献库并保存笔记",
+  "lrg-tag-only": "可以读取文献库并分配主题",
+  "lrg-write-only": "可以读取文献库和提纲，并撰写章节",
+  "lrg-scope": "阶段权限：提交范围",
+  "lrg-search": "阶段权限：检索",
+  "lrg-screen": "阶段权限：筛选",
+  "lrg-extract": "阶段权限：提取",
+  "lrg-organize": "阶段权限：组织",
+  "lrg-outline": "阶段权限：提纲",
+  "lrg-write": "阶段权限：撰写",
+  "lrg-review": "阶段权限：审校"
  }
 }

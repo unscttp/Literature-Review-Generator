@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+import re
 import secrets
 import threading
 import time
@@ -46,12 +47,18 @@ from .skills import install_skill
 from .sources import arxiv_search, openalex_search
 from .tools import SKILLS, RunTools
 
+GRAPH_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+
 CONFIG = ROOT / "config"
 NODE_TYPE = "stage"
 LANGUAGES = ("en", "zh-CN")
 REVIEW_TYPES = ("narrative", "scoping", "systematic")
 SOURCES = ("openalex", "arxiv")
 ACTIVE = ("queued", "running")
+# The sentences of a stage instruction about designing a graph (see config/workflow.json).
+DESIGN_ADVICE = re.compile(
+    r" If none of the skill's saved graphs fits, and the work splits.*?continue without it\."
+)
 EVENT_KINDS = (
     "tool.requested",
     "tool.completed",
@@ -65,6 +72,10 @@ EVENT_KINDS = (
     "skill.invoke.opened",
     "node.failed",
     "react.result_rejected",
+    "graph.created",
+    "graph.rejected",
+    "skill.graph.saved",
+    "skill.graph.save_declined",
 )
 
 
@@ -90,7 +101,11 @@ def validate_request(raw: dict, defaults: dict) -> dict:
         "target_papers": raw.get("target_papers") or defaults["target_papers"],
         "sources": raw.get("sources") or list(defaults["sources"]),
         "notes": str(raw.get("notes") or "").strip()[:2000],
+        # Whether stages may design graphs of their own (graph.create).
+        "design_graphs": raw.get("design_graphs", defaults.get("design_graphs", True)),
     }
+    if type(request["design_graphs"]) is not bool:
+        raise RunError("design_graphs must be true or false.")
     if request["language"] not in LANGUAGES:
         raise RunError(f"language must be one of {LANGUAGES}.")
     if request["style"] not in STYLES:
@@ -199,6 +214,12 @@ class RunService:
             limits = self.step_limits(request["target_papers"])
             for node in document["nodes"]:
                 node["react"]["max_steps"] = limits[node["id"]]
+                if not request.get("design_graphs", True) and node.get("allow_create_graph"):
+                    # No graph.create for this review: drop the flag and the advice.
+                    node["allow_create_graph"] = False
+                    node["config"]["instruction"] = DESIGN_ADVICE.sub(
+                        "", node["config"]["instruction"]
+                    )
         return WorkflowDefinition.from_dict(document)
 
     def folder(self, run_id: str) -> Path:
@@ -460,6 +481,7 @@ class RunService:
                     "scope": details.get("scope"),
                     "can_revise": details.get("on_reject") == "continue",
                     "details": None if details.get("kind") == "scope_review" else details,
+                    "skill_graph_title": self._skill_graph_title(details),
                 }
             )
         return {
@@ -477,12 +499,43 @@ class RunService:
         state = self._states.get(run_id)
         live = state.live if state else LiveTasks()
         task = self._task(run_id)
-        return task_graph(
+        view = task_graph(
             self.workflow(self.record(run_id)["request"]),
             task,
             live,
             running=state is not None and state.thread is not None,
         )
+        for graph in view["graphs"]:
+            if graph.get("parent"):
+                graph["skill_graph_title"] = self._skill_graph_title(graph)
+        return view
+
+    def _skill_graph_title(self, details: dict) -> str | None:
+        """The title (first scenario line) of the saved graph a request or view names."""
+        skill = details.get("skill")
+        name = skill.get("name") if isinstance(skill, dict) else skill
+        graph_id = details.get("skill_graph")
+        if not name or not graph_id or name not in SKILLS:
+            return None
+        from workflow_core import list_skill_graphs
+
+        for summary in list_skill_graphs(self.skills_dir / name):
+            if summary["id"] == graph_id:
+                return summary.get("title") or graph_id
+        return graph_id
+
+    def delete_skill_graph(self, skill: str, graph_id: str) -> None:
+        """Remove a graph saved from a review (the bundled sample graphs stay)."""
+        if skill not in SKILLS or not GRAPH_ID.fullmatch(graph_id or ""):
+            raise KeyError(graph_id)
+        if (ROOT / "skills" / skill / "graphs" / f"{graph_id}.json").exists():
+            raise RunError("The sample graphs that come with the app cannot be removed.")
+        folder = self.skills_dir / skill / "graphs"
+        files = [folder / f"{graph_id}{suffix}" for suffix in (".json", ".md", ".meta.json")]
+        if not files[0].is_file():
+            raise KeyError(graph_id)
+        for path in files:
+            path.unlink(missing_ok=True)
 
     def library(self, run_id: str) -> dict:
         library = Library(self.folder(run_id) / "library.json")
@@ -512,12 +565,14 @@ class RunService:
         """The workflow and the skills' sample graphs, for the viewer without a run."""
         return {
             "workflow": task_graph(self.workflow(), None, LiveTasks()),
-            "skills": skill_graphs(self.skills_dir),
+            "skills": skill_graphs(self.skills_dir, ROOT / "skills"),
         }
 
 
-def skill_graphs(skills_dir: Path) -> list[dict]:
+def skill_graphs(skills_dir: Path, bundled_dir: Path) -> list[dict]:
+    """Each skill's graphs: the bundled samples and those saved from reviews."""
     from workflow_core import list_skill_graphs, load_skill_graph
+    from workflow_skill_graph_meta import read_meta
 
     skills = []
     for name in SKILLS:
@@ -527,10 +582,14 @@ def skill_graphs(skills_dir: Path) -> list[dict]:
             if summary.get("invalid"):
                 continue
             saved = load_skill_graph(root, summary["id"])
+            meta = read_meta(root, summary["id"]) or {}
             graphs.append(
                 {
                     "id": saved["id"],
                     "title": summary["title"],
+                    "bundled": (bundled_dir / name / "graphs" / f"{saved['id']}.json").exists(),
+                    "saved_at": (meta.get("saved") or {}).get("at") or summary.get("saved_at"),
+                    "runs": (meta.get("runs") or {}).get("total", 0),
                     "explanation": saved["explanation"],
                     "usage_scenario": saved["usage_scenario"],
                     "start": saved["start"],
@@ -539,6 +598,7 @@ def skill_graphs(skills_dir: Path) -> list[dict]:
                             "id": n["id"],
                             "name": n.get("name") or n["id"],
                             "allowance": n.get("allowance"),
+                            "instruction": (n.get("config") or {}).get("instruction"),
                             "status": "pending",
                         }
                         for n in saved["graph"]["nodes"]
@@ -588,6 +648,10 @@ def activity(task: Task, limit: int = 120) -> list[dict]:
             entry["tool"] = details.get("skill")
         elif kind in ("graph.failed", "node.failed"):
             entry["text"] = _short(details.get("error") or "")
+        elif kind == "graph.rejected":
+            entry["text"] = _short(details.get("comment") or "")
+        elif kind in ("skill.graph.saved", "skill.graph.save_declined"):
+            entry["tool"] = details.get("name")
         elif kind == "react.result_rejected":
             entry["text"] = _short(details.get("problem") or "", 300)
         entries.append(entry)

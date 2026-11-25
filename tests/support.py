@@ -62,3 +62,17 @@ class ServiceCase(unittest.TestCase):
                 return summary
             time.sleep(0.02)
         raise AssertionError(f"run still {self.service.summary(run_id)['status']}")
+
+    def finish(self, run_id, decide=lambda approval: (True, "")):
+        """Decide every approval (scope, graphs, saves) until the run ends.
+
+        Returns the final summary; ``self.decided`` lists the approvals decided."""
+        self.decided = getattr(self, "decided", [])
+        while True:
+            summary = self.wait(run_id)
+            if summary["status"] != "waiting":
+                return summary
+            for approval in summary["approvals"]:
+                approved, comment = decide(approval)
+                self.decided.append({**approval, "approved": approved})
+                self.service.decide(run_id, approval["id"], approved, comment)

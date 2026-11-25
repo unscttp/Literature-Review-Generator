@@ -168,6 +168,118 @@ def submit_scope(payload):
     return call("scope.submit", **scope)
 
 
+DEMO_GRAPH_TITLE = "Themes and gaps (demo)"
+DEMO_GRAPH = {
+    "nodes": [
+        {
+            "id": "demo-themes",
+            "type": "stage",
+            "name": "Assign themes",
+            "inputs": {"request": "/request", "scope": "/stages/scope"},
+            "outputs": {"answer": "/skill_graphs/themes-and-gaps/demo-themes"},
+            "allowance": "lrg-tag-only",
+            "react": {"max_steps": 8, "on_step_limit": "answer"},
+            "config": {
+                "instruction": "Assign every included paper to 1-3 themes with library_tag."
+            },
+        },
+        {
+            "id": "demo-gaps",
+            "type": "stage",
+            "name": "Name the gaps",
+            "inputs": {"themes": "/skill_graphs/themes-and-gaps/demo-themes"},
+            "outputs": {"answer": "/skill_graphs/themes-and-gaps/demo-gaps"},
+            "allowance": "lrg-read",
+            "react": {"max_steps": 4, "on_step_limit": "answer"},
+            "config": {"instruction": "From the themes, name what no included paper covers."},
+        },
+    ],
+    "edges": [{"from": "demo-themes", "to": "demo-gaps"}],
+    "start": ["demo-themes"],
+    "explanation": (
+        "Two steps for a small review: assign the included papers to themes (may only tag), "
+        "then name the gaps between the themes (may only read)."
+    ),
+}
+DEMO_SCENARIO = f"""# {DEMO_GRAPH_TITLE}
+
+A graph designed by the demo script for small reviews with one or two themes:
+
+1. **Assign themes** - every included paper gets 1-3 themes;
+2. **Name the gaps** - what none of the included papers covers.
+"""
+
+
+def _actions(payload) -> list[tuple[str, dict]]:
+    return [
+        (entry["action"]["name"].removeprefix("tool:"), entry.get("observation"))
+        for entry in payload.get("history") or []
+        if "action" in entry
+    ]
+
+
+def search(payload):
+    """Run the english-literature sample graph; search directly if it is rejected."""
+    done = _actions(payload)
+    names = [name for name, _ in done]
+    if not names:
+        return call("skill.literature-search.invoke")
+    invoked = done[0][1]
+    if len(names) == 1:
+        return call(
+            "skill.literature-search.run_graph",
+            invoke_id=invoked["invoke_id"],
+            graph_id="english-literature",
+        )
+    graph_failed = isinstance(done[1][1], dict) and "error" in done[1][1]
+    for query in ("austen irony", "regency satire") if graph_failed else ():
+        if ("lit.search_openalex", query) not in [
+            (name, (obs or {}).get("query")) for name, obs in done
+        ]:
+            return call("lit.search_openalex", query=query)
+    if "lit.search_arxiv" not in names:
+        return call("lit.search_arxiv", query="irony detection novels")
+    if "skill.literature-search.finish" not in names:
+        return call("skill.literature-search.finish", invoke_id=invoked["invoke_id"])
+    return answer("Searched OpenAlex (with the english-literature graph) and arXiv.")
+
+
+def organize(payload):
+    """Design a graph and ask to save it; on later runs reuse the saved one."""
+    done = _actions(payload)
+    names = [name for name, _ in done]
+    if not names:
+        return call("skill.review-organization.invoke")
+    invoked = done[0][1]
+    if len(names) == 1:
+        saved = [g for g in invoked.get("graphs", []) if g.get("title") == DEMO_GRAPH_TITLE]
+        if saved:  # a graph saved by an earlier review: run it
+            return call(
+                "skill.review-organization.run_graph",
+                invoke_id=invoked["invoke_id"],
+                graph_id=saved[0]["id"],
+            )
+        return call(
+            "graph.create",
+            **DEMO_GRAPH,
+            skill_invoke_id=invoked["invoke_id"],
+            save_to_skill=True,
+            usage_scenario=DEMO_SCENARIO,
+        )
+    graph_failed = isinstance(done[1][1], dict) and "error" in done[1][1]
+    if graph_failed and "library.tag" not in names:  # the graph was rejected
+        return call(
+            "library.tag",
+            assignments=[
+                {"id": "P1", "themes": ["Narrative voice"]},
+                {"id": "P2", "themes": ["Narrative voice"]},
+            ],
+        )
+    if "skill.review-organization.finish" not in names:
+        return call("skill.review-organization.finish", invoke_id=invoked["invoke_id"])
+    return answer("One theme: narrative voice [P1, P2].")
+
+
 def demo_script():
     """Steps per node id, chosen by how many actions the node has taken."""
     return {
@@ -177,17 +289,7 @@ def demo_script():
             lambda p: submit_scope(p) if not last(p)["approved"] else answer("Scope approved."),
             answer("Scope approved."),
         ],
-        "search": [
-            call("skill.literature-search.invoke"),
-            lambda p: call(
-                "skill.literature-search.run_graph",
-                invoke_id=invoke_id(p),
-                graph_id="english-literature",
-            ),
-            call("lit.search_arxiv", query="irony detection novels"),
-            lambda p: call("skill.literature-search.finish", invoke_id=invoke_id(p)),
-            answer("Searched OpenAlex (with the english-literature graph) and arXiv."),
-        ],
+        "search": [search],
         # the nodes of the english-literature graph
         "plan": [answer("(a) austen irony")],
         "criticism": [call("lit.search_openalex", query="austen irony"), answer("2 found")],
@@ -221,7 +323,9 @@ def demo_script():
             ),
             answer("Notes for 2 papers."),
         ],
-        "organize": [
+        "organize": [organize],
+        # the nodes of the graph the demo designs in the organize stage
+        "demo-themes": [
             call(
                 "library.tag",
                 assignments=[
@@ -229,8 +333,9 @@ def demo_script():
                     {"id": "P2", "themes": ["Narrative voice"]},
                 ],
             ),
-            answer("One theme: narrative voice [P1, P2]."),
+            answer("Theme: narrative voice [P1, P2]."),
         ],
+        "demo-gaps": [answer("Gap: no study compares irony across Austen's six novels.")],
         "outline": [
             call(
                 "review.set_outline",
@@ -258,6 +363,7 @@ class ScriptedModel:
         self.script = script or demo_script()
         self.delay = delay
         self.calls = []
+        self.tools = []  # (node, tool names it was offered), for the tests
 
     def __call__(self, messages):
         if self.delay:
@@ -267,6 +373,7 @@ class ScriptedModel:
         payload = payload_of(messages)
         node = payload["node"]["id"]
         self.calls.append((node, messages[0]["content"]))
+        self.tools.append((node, [tool["name"] for tool in payload.get("available_tools") or []]))
         steps = self.script[node]
         step = steps[min(len(payload.get("history") or []), len(steps) - 1)]
         return step(payload) if callable(step) else step

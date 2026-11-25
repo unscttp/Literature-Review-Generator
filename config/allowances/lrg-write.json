@@ -1,6 +1,6 @@
 {
   "id": "lrg-write",
-  "description": "Stage 7: read the library and outline, write sections; the review-writing skill and its graphs.",
+  "description": "Stage 7: read the library and outline, write sections; the review-writing skill and its graphs; may design its own graph (graph.create).",
   "actions": [
     "tool:library.list",
     "tool:library.get",
@@ -10,7 +10,8 @@
     "tool:skill.review-writing.invoke",
     "tool:skill.review-writing.read",
     "tool:skill.review-writing.finish",
-    "tool:skill.review-writing.run_graph"
+    "tool:skill.review-writing.run_graph",
+    "tool:graph.create"
   ],
   "max_tool_risk": "high",
   "config": {}
