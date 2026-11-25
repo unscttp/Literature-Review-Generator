@@ -570,7 +570,7 @@
     box.replaceChildren();
     for (const approval of approvals) {
       const card = h("div", { class: "card approval" });
-      if (approval.kind === "scope_review" && approval.scope && !approval.scope.text) {
+      if (approval.kind === "scope_review" && approval.scope) {
         const scope = approval.scope;
         const years = [scope.from_year, scope.to_year].filter(Boolean).join(" – ");
         card.append(
@@ -585,12 +585,6 @@
             years ? [h("dt", {}, t("approval.years")), h("dd", {}, years)] : null,
             scope.notes ? [h("dt", {}, t("approval.notes")), h("dd", {}, scope.notes)] : null,
           ),
-        );
-      } else if (approval.kind === "scope_review") {
-        card.append(
-          h("h2", {}, t("approval.heading")),
-          h("p", { class: "muted" }, t("approval.fallbackIntro")),
-          h("pre", {}, approval.scope?.text || ""),
         );
       } else {
         card.append(h("h2", {}, t("approval.other")), h("pre", {}, JSON.stringify(approval.details, null, 2)));
@@ -626,7 +620,7 @@
         h("button", { class: "primary", onclick: () => decide(true) }, isScope ? t("approval.approve") : t("approval.approveOther")),
         approval.can_revise
           ? h("button", { onclick: () => decide(false) }, t("approval.requestChanges"))
-          : h("button", { class: "danger", onclick: () => decide(false) }, isScope ? t("approval.reject") : t("approval.rejectOther")),
+          : h("button", { class: "danger", onclick: () => decide(false) }, t("approval.rejectOther")),
       ));
       box.appendChild(card);
     }
@@ -742,15 +736,19 @@
     if (check.ok) {
       checkBox.replaceChildren(h("p", { class: "notice check" }, t("report.checkOk")));
     } else {
-      checkBox.replaceChildren(h("div", { class: draft ? "notice check" : "notice warning check" },
+      // Blocking issues keep the review stage from finishing; the rest are warnings.
+      const item = (issue) => h("li", {},
+        t(`report.issues.${issue.kind}`),
+        issue.section ? ` (${issue.section})` : "",
+        issue.ids ? `: ${issue.ids.join(", ")}` : "",
+        issue.sections ? `: ${issue.sections.join(", ")}` : "",
+      );
+      const blocking = check.issues.filter((issue) => issue.blocking);
+      const warnings = check.issues.filter((issue) => !issue.blocking);
+      checkBox.replaceChildren(h("div", { class: blocking.length && !draft ? "notice error check" : "notice warning check" },
         draft ? h("p", {}, t("report.draftNote")) : null,
-        h("strong", {}, t("report.issuesHeading")),
-        h("ul", {}, check.issues.map((issue) => h("li", {},
-          t(`report.issues.${issue.kind}`),
-          issue.section ? ` (${issue.section})` : "",
-          issue.ids ? `: ${issue.ids.join(", ")}` : "",
-          issue.sections ? `: ${issue.sections.join(", ")}` : "",
-        ))),
+        blocking.length ? [h("strong", {}, t("report.blockingHeading")), h("ul", {}, blocking.map(item))] : null,
+        warnings.length ? [h("strong", {}, t("report.warningsHeading")), h("ul", {}, warnings.map(item))] : null,
       ));
     }
     body.innerHTML = Markdown.render(report.markdown); // escaped by the renderer

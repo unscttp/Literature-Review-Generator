@@ -20,6 +20,8 @@ from pathlib import Path
 from .library import Library, write_json
 from .references import Citations, bibtex, cited_ids, heading
 
+# Issues that make a review unfinished; the others are warnings.
+BLOCKING = {"unknown_citation", "cites_not_included", "missing_sections", "missing_abstract"}
 SECTION_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 MAX_SECTION_CHARS = 16000
 WORD = re.compile(r"[㐀-鿿]|[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*")
@@ -115,8 +117,13 @@ def check(library: Library, sections: Sections, outline_ids: list[str] | None = 
     missing = [i for i in outline_ids or [] if i not in present]
     if missing:
         issues.append({"kind": "missing_sections", "sections": missing})
+    for issue in issues:
+        issue["blocking"] = issue["kind"] in BLOCKING
     return {
         "ok": not issues,
+        # A review is complete when nothing blocking is left: every citation is an
+        # included paper, every planned section and the abstract are written.
+        "complete": not any(issue["blocking"] for issue in issues),
         "issues": issues,
         "sections": len(all_sections),
         "words": sum(words(s["content"]) for s in all_sections),

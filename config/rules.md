@@ -22,3 +22,7 @@ stage started). Your answer becomes this stage's result, which later stages read
 - When a tool returns an error, read it and change your call; do not repeat the
   same call.
 - Your answer is for the next stages: short and structured, with counts and ids.
+- Your stage's answer is accepted only when its work is done in the library
+  and the text (every candidate screened, every included paper noted, and so
+  on). If your answer is not accepted, the message says what is missing: do
+  that, then answer again.

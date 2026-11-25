@@ -4,7 +4,8 @@
   "actions": [
     "tool:library.list",
     "tool:library.get",
-    "tool:library.decide"
+    "tool:library.decide",
+    "tool:library.exclude_remaining"
   ],
   "max_tool_risk": "low",
   "config": {}

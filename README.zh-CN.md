@@ -84,7 +84,7 @@ python run.py --demo
 | --- | --- | --- | --- |
 | 1 | 确定范围 | 研究问题、标准、检索式；由你批准 | `scope.submit`，读取检索技能 |
 | 2 | 检索 | 检索 OpenAlex 和 arXiv；结果进入文献库 | `lit.search_openalex`、`lit.search_arxiv`、`library.list/get`，文献检索技能及其示例图 |
-| 3 | 筛选 | 逐篇决定纳入或排除，并给出理由 | `library.list/get/decide/note`，筛选与提取技能及其示例图 |
+| 3 | 筛选 | 逐篇决定纳入或排除，并给出理由 | `library.list/get/decide/exclude_remaining/note`，筛选与提取技能及其示例图 |
 | 4 | 提取 | 记录方法、数据、发现与局限 | `library.list/get/note/decide` |
 | 5 | 组织 | 主题、比较、研究空白 | `library.list/get/tag`，组织综述技能及其示例图 |
 | 6 | 提纲 | 各章节及其引用的文献 | `library.list/get`、`review.set_outline` |
@@ -95,8 +95,26 @@ python run.py --demo
 只有第 2 阶段可以访问网络，而且只能访问学术检索接口。任何阶段都不能读写其他文件。
 
 **范围审批**是 `scope.submit` 工具中的一个 DGS 人工检查，标记为 `"on_reject": "continue"`：
-你退回范围时，工具把你的意见返回给模型，而不是结束运行。如果模型没有提交范围就直接给出回答，
-运行后钩子（post-run hook）会请你批准这个回答；拒绝则结束运行。
+你退回范围时，工具把你的意见返回给模型，而不是结束运行。
+
+**阶段检查。** 阶段给出的回答只是一份总结，只有当工作确实完成时才算数。每个阶段都指定一个 DGS 结果检查
+（`config/workflow.json` 中的 `react.result_check`，检查代码在 `lrg/gates.py`），在模型给出回答时核对文献库和正文：
+
+| 阶段 | 通过条件 |
+| --- | --- |
+| 确定范围 | 你已批准范围 |
+| 检索 | 文献库中有文献 |
+| 筛选 | 没有尚未决定的候选文献，且至少纳入一篇 |
+| 提取 | 每篇纳入的文献都有笔记 |
+| 组织 | 每篇纳入的文献都有主题 |
+| 提纲 | 已保存提纲，且提纲安排了每篇纳入的文献 |
+| 撰写 | 提纲中的每个章节都已撰写 |
+| 审校 | 没有阻断性问题：引用不存在或未纳入的文献、未撰写的章节、缺少摘要 |
+
+如果还缺少什么，回答会被拒绝，模型会得知缺少的内容（在“运行记录”中显示为“结果未被接受”），该阶段继续工作。
+如果阶段在步数用完时工作仍未完成，它会带着这个原因失败，下一阶段不会开始：运行会停下来，而不是生成一篇只是看起来完成的综述。
+点击**继续**会给该阶段新的步数。工具也遵守同样的规则：只有已纳入的文献才能记笔记、加主题、列入提纲或被引用；
+确定要纳入的文献之后，`library.exclude_remaining` 可以一次排除其余所有候选文献。
 
 **引用**由 `lrg/references.py` 在每次显示正文时根据文献库记录生成，因此正文和参考文献始终一致。
 作者、年份和出处都来自 OpenAlex 和 arXiv，而不是模型。
@@ -159,6 +177,7 @@ python run.py --demo
 | Ollama 或 LM Studio：“Could not connect” | 请先启动 Ollama 或 LM Studio 的本地服务器。 |
 | “Cannot use port 8765” | 端口被其他程序占用：`python run.py --port 8766`。 |
 | 阶段失败并提示 HTTP 401 或 403 | 密钥未被接受：在模型部分重新保存密钥，然后点击**继续**。 |
+| 阶段失败：“the result was not accepted: ...” | 该阶段在工作完成之前用完了步数（信息中说明了缺少什么）。点击**继续**获得新的步数，或在 `config/settings.json` 中调高它的上限。 |
 | 模型超时或 HTTP 429 | 服务繁忙；DGS 会自动重试。如果运行已停止，请点击**继续**。 |
 | “OpenAlex refused the request: ... budget” | 在“设置”中填写免费的 OpenAlex 密钥，或等到第二天。 |
 | “Directed Growing Sheet is missing” | 运行 `python install.py`。 |
@@ -180,6 +199,7 @@ python -m unittest discover -s tests -t .
 | `lrg/graph_view.py`、`lrg/live.py` | 工作流视图背后的数据 |
 | `lrg/server.py` | 本地 Web 服务器（仅使用标准库）及其 JSON 接口 |
 | `lrg/model.py` | 服务、API 密钥、实时模型列表以及每篇综述的模型选择 |
+| `lrg/gates.py` | 阶段检查：每个阶段的回答被接受之前必须完成的工作 |
 | `lrg/demo.py` | 演示用的脚本模型 |
 | `web/` | 界面：纯 HTML、CSS 和 JavaScript；界面文字在 `web/i18n/` 中 |
 | `third_party/dgs` | Directed Growing Sheet（git 子模块） |

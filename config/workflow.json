@@ -11,8 +11,7 @@
       "inputs": {"request": "/request"},
       "outputs": {"answer": "/stages/scope"},
       "allowance": "lrg-scope",
-      "react": {"max_steps": 10, "on_step_limit": "answer"},
-      "post_run": "scope_gate",
+      "react": {"max_steps": 10, "on_step_limit": "answer", "result_check": "scope_done"},
       "config": {
         "instruction": "Stage 1 of 8: scope the review. From request (topic, review_type, language, years, notes) write the review's scope: a working title in the review language; 2-5 research questions; inclusion criteria and exclusion criteria (topic, population or corpus, study types, languages, years); and 6-15 search queries for scholarly databases, mostly in English (add original-language terms where the field publishes in another language), covering synonyms, key concepts and the main approaches you expect. You may open the literature-search skill (skill_literature-search_invoke, then skill_literature-search_read for references/query-building.md, then skill_literature-search_finish) for advice on queries. Do not search yet. Submit the scope with scope_submit; the user reviews it. If the reply has approved false, revise the scope following the feedback and submit again. Once approved, answer with the approved scope as a short structured summary."
       }
@@ -24,7 +23,7 @@
       "inputs": {"request": "/request", "scope": "/stages/scope"},
       "outputs": {"answer": "/stages/search"},
       "allowance": "lrg-search",
-      "react": {"max_steps": 20, "on_step_limit": "answer"},
+      "react": {"max_steps": 20, "on_step_limit": "answer", "result_check": "search_done"},
       "config": {
         "instruction": "Stage 2 of 8: search. Open the literature-search skill (skill_literature-search_invoke) and follow its guidance; read references/query-building.md and references/sources.md if useful. If one of the skill's saved graphs fits this review (see graphs in the reply: usage scenario and hint), you may run it with skill_literature-search_run_graph and then fill the gaps it reports. Otherwise run the scope's queries yourself with lit_search_openalex and, for fields arXiv covers, lit_search_arxiv. Also search for existing reviews (add 'review' or 'survey'), highly cited work (sort cited) and recent work (sort recent). Every result is added to the library automatically. When a search finds nothing or nothing relevant, change the keywords instead of repeating it. Aim for a candidate pool of roughly three to four times request.target_papers. Close the skill with skill_literature-search_finish. Answer with: the queries run per source and what each found, the size of the candidate pool, and gaps you noticed."
       }
@@ -36,9 +35,9 @@
       "inputs": {"request": "/request", "scope": "/stages/scope", "search": "/stages/search"},
       "outputs": {"answer": "/stages/screen"},
       "allowance": "lrg-screen",
-      "react": {"max_steps": 14, "on_step_limit": "answer"},
+      "react": {"max_steps": 14, "on_step_limit": "answer", "result_check": "screen_done"},
       "config": {
-        "instruction": "Stage 3 of 8: screen. Open the screening-extraction skill (skill_screening-extraction_invoke) and read references/screening.md. If one of its saved graphs fits this review, you may run it with skill_screening-extraction_run_graph. Otherwise go through all candidates with library_list (status candidate, detail abstract, page with offset) and decide each one with library_decide against the scope's inclusion and exclusion criteria: include, or exclude with the criterion it fails. Read full records with library_get only for borderline papers. Include roughly request.target_papers papers; prefer relevant, substantive and well-cited or recent work and keep a balance of approaches. Close the skill with skill_screening-extraction_finish. Answer with the counts (candidates, included, excluded) and the main reasons for exclusion with their counts."
+        "instruction": "Stage 3 of 8: screen. Open the screening-extraction skill (skill_screening-extraction_invoke) and read references/screening.md. If one of its saved graphs fits this review, you may run it with skill_screening-extraction_run_graph. Otherwise go through all candidates with library_list (status candidate, detail abstract, page with offset) and decide each one with library_decide (up to 100 decisions per call) against the scope's inclusion and exclusion criteria: include, or exclude with the criterion it fails. The stage is accepted only when no candidate is left and at least one paper is included; once the papers to include are chosen, library_exclude_remaining excludes the rest with one reason. Read full records with library_get only for borderline papers. Include roughly request.target_papers papers; prefer relevant, substantive and well-cited or recent work and keep a balance of approaches. Close the skill with skill_screening-extraction_finish. Answer with the counts (candidates, included, excluded) and the main reasons for exclusion with their counts."
       }
     },
     {
@@ -48,9 +47,9 @@
       "inputs": {"request": "/request", "scope": "/stages/scope", "screen": "/stages/screen"},
       "outputs": {"answer": "/stages/extract"},
       "allowance": "lrg-extract",
-      "react": {"max_steps": 10, "on_step_limit": "answer"},
+      "react": {"max_steps": 10, "on_step_limit": "answer", "result_check": "extract_done"},
       "config": {
-        "instruction": "Stage 4 of 8: extract. Open the screening-extraction skill and read references/extraction.md. For every included paper (library_list status included), read the records with library_get (up to 8 ids per call) and save notes with library_note, up to 10 papers per call: summary, method, data (corpus, sample or material), findings and limitations, in the review language. Use only what the record says; write 'not reported' when the abstract does not say. Papers that already have notes (has_notes) need none. If a record shows a paper does not meet the criteria after all, exclude it with library_decide. Close the skill. Answer with how many papers have notes and what kinds of evidence dominate (methods, data, findings)."
+        "instruction": "Stage 4 of 8: extract. Open the screening-extraction skill and read references/extraction.md. For every included paper (library_list status included), read the records with library_get (up to 8 ids per call) and save notes with library_note, up to 10 papers per call: summary, method, data (corpus, sample or material), findings and limitations, in the review language. Use only what the record says; write 'not reported' when the abstract does not say. Papers that already have notes (has_notes) need none. The stage is accepted only when every included paper has notes. If a record shows a paper does not meet the criteria after all, exclude it with library_decide. Close the skill. Answer with how many papers have notes and what kinds of evidence dominate (methods, data, findings)."
       }
     },
     {
@@ -60,9 +59,9 @@
       "inputs": {"request": "/request", "scope": "/stages/scope", "extract": "/stages/extract"},
       "outputs": {"answer": "/stages/organize"},
       "allowance": "lrg-organize",
-      "react": {"max_steps": 14, "on_step_limit": "answer"},
+      "react": {"max_steps": 14, "on_step_limit": "answer", "result_check": "organize_done"},
       "config": {
-        "instruction": "Stage 5 of 8: organize. Open the review-organization skill (skill_review-organization_invoke) and read references/structures.md. Choose the organizing principle that answers the research questions best (themes, methods, chronology, theories or debates) and say why. If one of the skill's saved graphs fits this review, you may run it with skill_review-organization_run_graph. Assign every included paper to 1-3 themes with library_tag (theme names in the review language). Then compare: where the papers agree, disagree, and what is missing. Close the skill. Answer with the organizing principle, each theme with its papers ([P..] ids) and one line on what they show, the main agreements and disagreements, and the gaps."
+        "instruction": "Stage 5 of 8: organize. Open the review-organization skill (skill_review-organization_invoke) and read references/structures.md. Choose the organizing principle that answers the research questions best (themes, methods, chronology, theories or debates) and say why. If one of the skill's saved graphs fits this review, you may run it with skill_review-organization_run_graph. Assign every included paper to 1-3 themes with library_tag (theme names in the review language); the stage is accepted only when every included paper has a theme. Then compare: where the papers agree, disagree, and what is missing. Close the skill. Answer with the organizing principle, each theme with its papers ([P..] ids) and one line on what they show, the main agreements and disagreements, and the gaps."
       }
     },
     {
@@ -72,9 +71,9 @@
       "inputs": {"request": "/request", "scope": "/stages/scope", "organize": "/stages/organize"},
       "outputs": {"answer": "/stages/outline"},
       "allowance": "lrg-outline",
-      "react": {"max_steps": 12, "on_step_limit": "answer"},
+      "react": {"max_steps": 12, "on_step_limit": "answer", "result_check": "outline_done"},
       "config": {
-        "instruction": "Stage 6 of 8: outline. Open the review-writing skill (skill_review-writing_invoke) and read references/structure.md. Plan the review's sections from the organization: an introduction (context, aims and research questions), a short method section (sources, queries, criteria and counts), one section per theme or group of themes, a discussion (synthesis, disagreements, gaps and future research) and a conclusion. Give each section an id, a title in the review language, its purpose and the papers it will cite; every included paper should be cited somewhere. Save it with review_set_outline. Close the skill. Answer with the outline."
+        "instruction": "Stage 6 of 8: outline. Open the review-writing skill (skill_review-writing_invoke) and read references/structure.md. Plan the review's sections from the organization: an introduction (context, aims and research questions), a short method section (sources, queries, criteria and counts), one section per theme or group of themes, a discussion (synthesis, disagreements, gaps and future research) and a conclusion. Give each section an id, a title in the review language, its purpose and the papers it will cite; every included paper must be planned in at least one section (the stage is accepted only then). Save it with review_set_outline. Close the skill. Answer with the outline."
       }
     },
     {
@@ -84,9 +83,9 @@
       "inputs": {"request": "/request", "scope": "/stages/scope", "organize": "/stages/organize", "outline": "/stages/outline"},
       "outputs": {"answer": "/stages/write"},
       "allowance": "lrg-write",
-      "react": {"max_steps": 20, "on_step_limit": "answer"},
+      "react": {"max_steps": 20, "on_step_limit": "answer", "result_check": "write_done"},
       "config": {
-        "instruction": "Stage 7 of 8: write. Open the review-writing skill and read references/style.md (and references/chinese-academic.md when request.language is zh-CN). If one of its saved graphs fits this review, you may run it with skill_review-writing_run_graph. Otherwise write the sections of the outline (review_outline) in order with review_write_section, one call per section, in the review language. Before writing a theme section, read its papers' records and notes with library_get. Synthesize: compare and connect papers instead of summarizing them one by one, and cite every claim about a paper with its id, [P12] or [P3, P7]. Cite only papers in the library. The method section reports the real queries, sources and counts (library_list gives the counts). Do not write the abstract yet. Close the skill. Answer with the sections written and their word counts."
+        "instruction": "Stage 7 of 8: write. Open the review-writing skill and read references/style.md (and references/chinese-academic.md when request.language is zh-CN). If one of its saved graphs fits this review, you may run it with skill_review-writing_run_graph. Otherwise write the sections of the outline (review_outline) in order with review_write_section, one call per section, in the review language. Before writing a theme section, read its papers' records and notes with library_get. Synthesize: compare and connect papers instead of summarizing them one by one, and cite every claim about a paper with its id, [P12] or [P3, P7]. Only included papers can be cited; review_write_section refuses a section that cites any other paper. The stage is accepted only when every section of the outline is written. The method section reports the real queries, sources and counts (library_list gives the counts). Do not write the abstract yet. Close the skill. Answer with the sections written and their word counts."
       }
     },
     {
@@ -96,9 +95,9 @@
       "inputs": {"request": "/request", "scope": "/stages/scope", "outline": "/stages/outline", "write": "/stages/write"},
       "outputs": {"answer": "/stages/review"},
       "allowance": "lrg-review",
-      "react": {"max_steps": 18, "on_step_limit": "answer"},
+      "react": {"max_steps": 18, "on_step_limit": "answer", "result_check": "review_done"},
       "config": {
-        "instruction": "Stage 8 of 8: review and finish. Run review_check and fix every issue it lists: replace citations of unknown or excluded papers, cite included papers that are never cited where they fit (or explain in the method section why they are not discussed), and complete missing or very short sections (review_read gives a section's text; review_write_section replaces it). Read the whole draft once for coherence, repetition and claims without citations, and revise sections where needed. Then write the abstract (section_id abstract, 150-250 words or 300-400 Chinese characters) with the aim, sources, number of included papers, main findings and gaps. Run review_check again. Answer with the abstract and a list of remaining limitations of this review."
+        "instruction": "Stage 8 of 8: review and finish. Run review_check and fix every issue it lists (the stage is accepted only when no blocking issue is left: citations of unknown or not-included papers, unwritten outline sections, a missing abstract): replace citations of unknown or excluded papers, cite included papers that are never cited where they fit (or explain in the method section why they are not discussed), and complete missing or very short sections (review_read gives a section's text; review_write_section replaces it). Read the whole draft once for coherence, repetition and claims without citations, and revise sections where needed. Then write the abstract (section_id abstract, 150-250 words or 300-400 Chinese characters) with the aim, sources, number of included papers, main findings and gaps. Run review_check again. Answer with the abstract and a list of remaining limitations of this review."
       }
     }
   ],

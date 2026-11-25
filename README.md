@@ -111,7 +111,7 @@ may call (`config/allowances/`). DGS checks every tool call against it.
 | --- | --- | --- | --- |
 | 1 | Scope | Research questions, criteria, queries; you approve | `scope.submit`, reads the search skill |
 | 2 | Search | Searches OpenAlex and arXiv; results go into the library | `lit.search_openalex`, `lit.search_arxiv`, `library.list/get`, literature-search skill and its graph |
-| 3 | Screen | Includes or excludes every candidate, with a reason | `library.list/get/decide/note`, screening-extraction skill and its graph |
+| 3 | Screen | Includes or excludes every candidate, with a reason | `library.list/get/decide/exclude_remaining/note`, screening-extraction skill and its graph |
 | 4 | Extract | Notes on method, data, findings, limitations | `library.list/get/note/decide` |
 | 5 | Organize | Themes, comparison, gaps | `library.list/get/tag`, review-organization skill and its graph |
 | 6 | Outline | Sections and the papers each cites | `library.list/get`, `review.set_outline` |
@@ -125,9 +125,33 @@ scholarly APIs. No stage can read or write other files.
 
 **The scope approval** is a DGS human check inside the `scope.submit` tool,
 marked `"on_reject": "continue"`: when you send the scope back, the tool
-returns your comment to the model instead of ending the run. If a model
-answers without submitting a scope, a post-run hook asks you to approve its
-answer instead; rejecting it ends the run.
+returns your comment to the model instead of ending the run.
+
+**Stage checks.** A stage's answer is only a summary, so it counts only once
+the work is really done. Each stage names a DGS result check
+(`react.result_check` in `config/workflow.json`, the checks are in
+`lrg/gates.py`), which looks at the library and the text when the model
+answers:
+
+| Stage | Accepted when |
+| --- | --- |
+| Scope | You approved the scope |
+| Search | The library has papers |
+| Screen | No candidate is left undecided and at least one paper is included |
+| Extract | Every included paper has notes |
+| Organize | Every included paper has a theme |
+| Outline | The outline is saved and plans every included paper |
+| Write | Every section of the outline is written |
+| Review | No blocking issue: citations of unknown or not-included papers, unwritten sections, a missing abstract |
+
+If something is missing, the answer is rejected and the model is told what
+(it shows as *Result not accepted* under *Activity*), and the stage goes on.
+A stage that runs out of steps with work missing fails with that reason, and
+the next stage does not start: the run stops instead of producing a review
+that only looks finished. **Resume** gives the stage fresh steps. The tools
+hold the same line: only included papers can get notes and themes, be
+planned in the outline or be cited, and `library.exclude_remaining` closes a
+large screening in one call once the papers to include are chosen.
 
 **Citations** are built by `lrg/references.py` from the library records
 whenever the report is shown, so the text and the references always agree.
@@ -208,6 +232,7 @@ seconds between requests, as arXiv asks.
 | Ollama or LM Studio: "Could not connect" | Start Ollama or LM Studio's local server first. |
 | "Cannot use port 8765" | Another program uses it: `python run.py --port 8766`. |
 | A stage fails with HTTP 401 or 403 | The key was not accepted: save it again in the model section, then **Resume**. |
+| A stage failed: "the result was not accepted: ..." | The stage ran out of steps before its work was done (the message says what is missing). Press **Resume** for fresh steps, or raise its limit in `config/settings.json`. |
 | Timeouts or HTTP 429 from the model | The service is busy; DGS retries by itself. Press **Resume** if the run stopped. |
 | "OpenAlex refused the request: ... budget" | Add a free OpenAlex key under *Settings*, or wait until tomorrow. |
 | "Directed Growing Sheet is missing" | Run `python install.py`. |
@@ -230,6 +255,7 @@ so they need no key and no network. The code:
 | `lrg/graph_view.py`, `lrg/live.py` | The data behind the workflow viewer |
 | `lrg/server.py` | The local web server (standard library only) and its JSON API |
 | `lrg/model.py` | Services, API keys, live model lists and the per-review model choice |
+| `lrg/gates.py` | The stage checks: what each stage must have done before its answer counts |
 | `lrg/demo.py` | The scripted demo model |
 | `web/` | The interface: plain HTML, CSS and JavaScript; texts in `web/i18n/` |
 | `third_party/dgs` | Directed Growing Sheet (git submodule) |

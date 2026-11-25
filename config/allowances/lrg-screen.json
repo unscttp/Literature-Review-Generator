@@ -5,6 +5,7 @@
     "tool:library.list",
     "tool:library.get",
     "tool:library.decide",
+    "tool:library.exclude_remaining",
     "tool:library.note",
     "tool:skill.screening-extraction.invoke",
     "tool:skill.screening-extraction.read",

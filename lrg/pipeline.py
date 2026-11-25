@@ -31,11 +31,11 @@ from workflow_core import (
     WorkflowDefinition,
     WorkflowEngine,
     pending_human_checks,
-    require_human_check,
     resolve_human_check,
 )
 
 from . import ROOT
+from .gates import register_gates
 from .graph_view import task_graph
 from .library import Library, write_json
 from .live import LiveTasks
@@ -64,6 +64,7 @@ EVENT_KINDS = (
     "graph.failed",
     "skill.invoke.opened",
     "node.failed",
+    "react.result_rejected",
 )
 
 
@@ -268,16 +269,8 @@ class RunService:
         model = with_rules(self.model_factory(choice), self.rules, lambda: state.cancelled)
         engine.register_llm(NODE_TYPE, saved_model(model), memory_writer=False)
 
-        def scope_gate(context, result, config):
-            """The scope must be approved: if the model answered without submitting
-            it, the user reviews the answer itself (rejecting ends the run)."""
-            if tools.scope() is None:
-                answer = (context.execution.output_data or {}).get("answer")
-                require_human_check(
-                    context, "scope.answer", {"kind": "scope_review", "scope": {"text": answer}}
-                )
-
-        engine.register_post_run("scope_gate", scope_gate)
+        # Each stage's answer counts only once its work is really done (lrg/gates.py).
+        register_gates(engine, tools)
         return engine
 
     def _tools(self, run_id: str, request: dict) -> RunTools:
@@ -595,5 +588,7 @@ def activity(task: Task, limit: int = 120) -> list[dict]:
             entry["tool"] = details.get("skill")
         elif kind in ("graph.failed", "node.failed"):
             entry["text"] = _short(details.get("error") or "")
+        elif kind == "react.result_rejected":
+            entry["text"] = _short(details.get("problem") or "", 300)
         entries.append(entry)
     return entries[-limit:]

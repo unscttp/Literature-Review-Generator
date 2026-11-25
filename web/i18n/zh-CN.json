@@ -85,7 +85,6 @@
  "approval": {
   "heading": "批准综述范围",
   "intro": "批准后开始检索。如需修改，请写明修改意见并退回：模型会修改范围并再次提交。",
-  "fallbackIntro": "模型没有提交结构化的范围就给出了回答。批准则按此继续，拒绝则结束本次运行。",
   "title": "暂定标题",
   "questions": "研究问题",
   "inclusion": "纳入标准",
@@ -93,10 +92,8 @@
   "queries": "检索式",
   "years": "年份",
   "notes": "备注",
-  "text": "范围",
   "approve": "批准并开始检索",
   "requestChanges": "附修改意见退回",
-  "reject": "拒绝并结束",
   "commentPlaceholder": "需要修改什么？例如：也纳入中文学界的研究。",
   "commentNeeded": "请先写明需要修改的地方。",
   "other": "运行需要你的决定",
@@ -164,7 +161,6 @@
   "copy": "复制正文",
   "copied": "已复制",
   "checkOk": "检查通过：所有引用都是文献库中已纳入的文献。",
-  "issuesHeading": "检查发现：",
   "words": "字",
   "cited": "篇被引用",
   "draftNote": "草稿：综述仍在撰写中。",
@@ -175,7 +171,9 @@
    "short_section": "章节过短",
    "missing_abstract": "尚无摘要",
    "missing_sections": "提纲中尚未撰写的章节"
-  }
+  },
+  "blockingHeading": "尚未完成：审校阶段必须先解决以下问题。",
+  "warningsHeading": "值得留意（不影响完成）："
  },
  "activity": {
   "empty": "暂无记录。",
@@ -190,7 +188,8 @@
    "graph.completed": "技能图完成",
    "graph.failed": "技能图失败",
    "skill.invoke.opened": "打开技能",
-   "node.failed": "阶段失败"
+   "node.failed": "阶段失败",
+   "react.result_rejected": "结果未被接受"
   }
  },
  "settings": {

@@ -85,7 +85,6 @@
  "approval": {
   "heading": "Approve the scope",
   "intro": "The search starts once you approve. To change something, write what to change and send it back: the model revises the scope and asks again.",
-  "fallbackIntro": "The model answered without submitting a structured scope. Approve to continue with it, or reject to end the run.",
   "title": "Working title",
   "questions": "Research questions",
   "inclusion": "Inclusion criteria",
@@ -93,10 +92,8 @@
   "queries": "Search queries",
   "years": "Years",
   "notes": "Notes",
-  "text": "Scope",
   "approve": "Approve and start the search",
   "requestChanges": "Send back with changes",
-  "reject": "Reject and end",
   "commentPlaceholder": "What should change? e.g. Also include criticism written in Chinese.",
   "commentNeeded": "Write what should change first.",
   "other": "The run needs your decision",
@@ -164,7 +161,6 @@
   "copy": "Copy text",
   "copied": "Copied",
   "checkOk": "Check passed: every citation is an included paper of the library.",
-  "issuesHeading": "The check found:",
   "words": "words",
   "cited": "papers cited",
   "draftNote": "Draft: the review is still being written.",
@@ -175,7 +171,9 @@
    "short_section": "Very short section",
    "missing_abstract": "No abstract yet",
    "missing_sections": "Sections of the outline not written yet"
-  }
+  },
+  "blockingHeading": "Not finished: the review stage must fix these first.",
+  "warningsHeading": "Worth a look (not blocking):"
  },
  "activity": {
   "empty": "Nothing yet.",
@@ -190,7 +188,8 @@
    "graph.completed": "Skill graph finished",
    "graph.failed": "Skill graph failed",
    "skill.invoke.opened": "Skill opened",
-   "node.failed": "Stage failed"
+   "node.failed": "Stage failed",
+   "react.result_rejected": "Result not accepted"
   }
  },
  "settings": {

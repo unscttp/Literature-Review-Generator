@@ -195,7 +195,7 @@ class Library:
                     "exclude": "excluded",
                     "candidate": "candidate",
                 }[decision["decision"]]
-                paper["reason"] = _clip(decision.get("reason"), 300)
+                paper["reason"] = _clip(decision.get("reason") or "", 300)
             self._save()
             return self.counts()
 

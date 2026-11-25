@@ -187,24 +187,19 @@ class RunControlTests(ServiceCase):
             summary["counts"]["searches"], searches
         )  # finished stages are not repeated
 
-    def test_scope_answered_without_submitting_needs_approval(self):
-        from lrg.demo import answer, demo_script
+    def test_a_scope_answer_without_submitting_is_not_accepted(self):
+        from lrg.demo import answer, demo_script, submit_scope
 
         script = demo_script()
-        script["scope"] = [answer("A scope written as plain text.")]
+        script["scope"] = [answer("A scope written as plain text.")] + script["scope"]
+        script["scope"][1] = submit_scope  # after the rejection it submits
         service = self.make_service(script)
         run = service.create({"topic": "Irony in Austen"})
         summary = self.wait(run["id"])
         [approval] = summary["approvals"]
-        self.assertFalse(approval["can_revise"])
-        self.assertEqual(approval["scope"], {"text": "A scope written as plain text."})
-        service.decide(run["id"], approval["id"], False)
-        summary = self.wait(run["id"])
-        self.assertEqual(summary["status"], "failed")
-        from lrg.pipeline import RunError
-
-        with self.assertRaises(RunError):
-            service.resume(run["id"])
+        self.assertEqual(approval["scope"]["title"], "Irony in Jane Austen")
+        rejected = [a for a in summary["activity"] if a["kind"] == "react.result_rejected"]
+        self.assertIn("not approved", rejected[0]["text"])
 
 
 class StepLimitTests(ServiceCase):
@@ -237,7 +232,21 @@ class NoteTests(ServiceCase):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
         tools = RunTools(Path(folder.name), {})
-        tools.library.add([{"title": "A"}, {"title": "B"}], query="q", source="openalex")
+        tools.library.add(
+            [{"title": "A"}, {"title": "B"}, {"title": "C"}], query="q", source="openalex"
+        )
+        with self.assertRaises(ValueError):  # candidates cannot get notes
+            tools.note(None, None, {"notes": [{"id": "P1", "summary": "x"}]})
+        tools.decide(
+            None,
+            None,
+            {
+                "decisions": [
+                    {"id": "P1", "decision": "include"},
+                    {"id": "P2", "decision": "include"},
+                ]
+            },
+        )
         with self.assertRaises(KeyError):
             tools.note(None, None, {"notes": [{"id": "P1", "summary": "x"}, {"id": "P9"}]})
         self.assertFalse(tools.library.get("P1").get("notes"))  # nothing saved
@@ -245,3 +254,88 @@ class NoteTests(ServiceCase):
             None, None, {"notes": [{"id": "P1", "summary": "x"}, {"id": "P2", "method": "y"}]}
         )
         self.assertEqual(reply, {"saved": ["P1", "P2"], "with_notes": 2})
+        # Themes, outline and citations: included papers only, nothing saved otherwise.
+        with self.assertRaises(ValueError):
+            tools.tag(None, None, {"assignments": [{"id": "P3", "themes": ["T"]}]})
+        with self.assertRaises(ValueError):
+            tools.set_outline(
+                None,
+                None,
+                {
+                    "sections": [
+                        {"id": "a", "title": "A", "purpose": "x", "papers": ["P1", "P3"]},
+                        {"id": "b", "title": "B", "purpose": "y"},
+                    ]
+                },
+            )
+        self.assertEqual(tools.outline(), [])
+        with self.assertRaises(ValueError):
+            tools.write_section(
+                None, None, {"section_id": "a", "title": "A", "content": "x [P1, P3]"}
+            )
+        self.assertEqual(tools.sections.all(), [])
+        # The rest of the candidates in one call, once something is included.
+        reply = tools.exclude_remaining(None, None, {"reason": "E6: lower priority"})
+        self.assertEqual((reply["excluded"], reply["counts"]["candidate"]), (1, 0))
+        self.assertEqual(tools.library.get("P3")["reason"], "E6: lower priority")
+
+
+class GateTests(ServiceCase):
+    """A stage that did not do its work cannot hand on a result (the 0-included run)."""
+
+    def approve_scope(self, service, run_id):
+        summary = self.wait(run_id)
+        service.decide(run_id, summary["approvals"][0]["id"], True)
+        return self.wait(run_id)
+
+    def test_screening_that_decides_nothing_stops_the_run(self):
+        from lrg.demo import answer, demo_script
+
+        script = demo_script()
+        script["screen"] = [answer("Screened: 35 papers included.")]  # but nothing recorded
+        service = self.make_service(script)
+        run = service.create({"topic": "Irony in Austen"})
+        summary = self.approve_scope(service, run["id"])
+        self.assertEqual(summary["status"], "failed")
+        self.assertIn("still candidates", summary["error"])
+        self.assertEqual(summary["counts"]["included"], 0)
+        statuses = {n["id"]: n["status"] for n in service.graph(run["id"])["graphs"][0]["nodes"]}
+        self.assertEqual(statuses["screen"], "failed")
+        self.assertEqual(statuses["extract"], "pending")  # later stages never started
+        self.assertEqual(summary["sections"], [])
+        rejected = [a for a in summary["activity"] if a["kind"] == "react.result_rejected"]
+        self.assertTrue(rejected)
+
+    def test_a_rejected_stage_finishes_its_work_and_goes_on(self):
+        from lrg.demo import answer, call, demo_script
+
+        script = demo_script()
+        decide = script["screen"][1]
+        script["screen"] = [
+            answer("Done screening."),  # too early: rejected with what is missing
+            call("library.decide", decisions=[{"id": "P1", "decision": "include", "reason": "ok"}]),
+            answer("Done."),  # P2-P4 still candidates: rejected again
+            decide,
+            answer("2 included, 2 excluded."),
+        ]
+        service = self.make_service(script)
+        run = service.create({"topic": "Irony in Austen"})
+        summary = self.approve_scope(service, run["id"])
+        self.assertEqual(summary["status"], "completed", summary.get("error"))
+        rejected = [a["text"] for a in summary["activity"] if a["kind"] == "react.result_rejected"]
+        self.assertEqual(len(rejected), 2)
+        self.assertIn("4 of 4 papers are still candidates", rejected[0])
+        self.assertIn("3 of 4 papers are still candidates (P2, P3, P4)", rejected[1])
+        self.assertTrue(service.report(run["id"])["check"]["complete"])
+
+    def test_the_review_stage_cannot_finish_with_blocking_issues(self):
+        from lrg.demo import answer, call, demo_script
+
+        script = demo_script()
+        script["review"] = [call("review.check"), answer("Finished.")]  # no abstract written
+        service = self.make_service(script)
+        run = service.create({"topic": "Irony in Austen"})
+        summary = self.approve_scope(service, run["id"])
+        self.assertEqual(summary["status"], "failed")
+        self.assertIn("missing_abstract", summary["error"])
+        self.assertFalse(service.report(run["id"])["check"]["complete"])

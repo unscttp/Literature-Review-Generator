@@ -21,6 +21,7 @@ from pathlib import Path
 from workflow_core import LocalToolModule, ToolDefinition, register_skill, require_human_check
 
 from .library import NOTE_FIELDS, Library, write_json
+from .references import cited_ids
 from .report import Sections, check
 from .sources import SearchError, arxiv_search, openalex_search
 
@@ -145,26 +146,39 @@ LIBRARY_DECIDE = ToolDefinition(
     "library.decide",
     "low",
     description=(
-        "Record screening decisions: include or exclude papers (or put them back to "
-        "candidate), each with a short reason that refers to the criteria."
+        "Record screening decisions, up to 100 per call: include or exclude papers (or put "
+        "them back to candidate), each with a short reason that refers to the criteria. "
+        "Every candidate must end up included or excluded."
     ),
     input_schema=_object(
         {
             "decisions": {
                 "type": "array",
                 "minItems": 1,
-                "maxItems": 60,
+                "maxItems": 100,
                 "items": _object(
                     {
                         "id": _ID,
                         "decision": {"enum": ["include", "exclude", "candidate"]},
                         "reason": {"type": "string", "maxLength": 300},
                     },
-                    ["id", "decision", "reason"],
+                    ["id", "decision"],
                 ),
             }
         },
         ["decisions"],
+    ),
+)
+EXCLUDE_REMAINING = ToolDefinition(
+    "library.exclude_remaining",
+    "low",
+    description=(
+        "Exclude every paper that is still a candidate, with one reason (for example 'E6: "
+        "lower priority, enough papers included'). Use it once the papers to include have "
+        "been chosen; it needs at least one included paper."
+    ),
+    input_schema=_object(
+        {"reason": {"type": "string", "minLength": 3, "maxLength": 300}}, ["reason"]
     ),
 )
 LIBRARY_NOTE = ToolDefinition(
@@ -408,13 +422,38 @@ class RunTools:
         return {"papers": found, **({"unknown": missing} if missing else {})}
 
     def decide(self, context, tool, args):
-        return {"counts": self.library.decide(args["decisions"])}
+        counts = self.library.decide(args["decisions"])
+        reply = {"counts": counts}
+        if counts["candidate"]:
+            left = [p["id"] for p in self.library.papers("candidate")][:20]
+            reply["still_candidates"] = left
+        return reply
 
-    def note(self, context, tool, args):
-        known = self.library.ids()
-        unknown = [entry["id"] for entry in args["notes"] if entry["id"] not in known]
+    def exclude_remaining(self, context, tool, args):
+        if not self.library.papers("included"):
+            raise ValueError("No paper is included yet: include the relevant papers first.")
+        left = self.library.papers("candidate")
+        if left:
+            self.library.decide(
+                [{"id": p["id"], "decision": "exclude", "reason": args["reason"]} for p in left]
+            )
+        return {"excluded": len(left), "counts": self.library.counts()}
+
+    def _require_included(self, ids, what: str) -> None:
+        """Refuse papers that are not included: later stages work on the included set."""
+        status = {p["id"]: p["status"] for p in self.library.papers()}
+        unknown = sorted({i for i in ids if i not in status})
         if unknown:
             raise KeyError(f"Unknown paper ids: {', '.join(unknown)}. Nothing was saved.")
+        wrong = sorted({f"{i} ({status[i]})" for i in ids if status[i] != "included"})
+        if wrong:
+            raise ValueError(
+                f"Only included papers can {what}; not included: {', '.join(wrong)}. "
+                "Nothing was saved. Screening decides which papers are included."
+            )
+
+    def note(self, context, tool, args):
+        self._require_included([entry["id"] for entry in args["notes"]], "get notes")
         saved = [
             self.library.note(entry["id"], {k: v for k, v in entry.items() if k != "id"})["id"]
             for entry in args["notes"]
@@ -425,7 +464,12 @@ class RunTools:
         }
 
     def tag(self, context, tool, args):
-        return self.library.tag(args["assignments"])
+        self._require_included([a["id"] for a in args["assignments"]], "get themes")
+        reply = self.library.tag(args["assignments"])
+        untagged = [p["id"] for p in self.library.papers("included") if not p.get("themes")]
+        if untagged:
+            reply["included_without_themes"] = untagged
+        return reply
 
     # -- the text --------------------------------------------------------------------
 
@@ -439,31 +483,25 @@ class RunTools:
         ids = [s["id"] for s in args["sections"]]
         if len(set(ids)) != len(ids):
             raise ValueError("Section ids must be unique.")
-        known = self.library.ids()
-        unknown = sorted({p for s in args["sections"] for p in s.get("papers", [])} - known)
+        planned = [p for s in args["sections"] for p in s.get("papers", [])]
+        self._require_included(planned, "be planned in the outline")
         write_json(self.folder / "outline.json", {"sections": args["sections"]})
         reply = {"saved": ids}
-        if unknown:
-            reply["warning"] = f"Not in the library: {', '.join(unknown)}."
+        missing = [p["id"] for p in self.library.papers("included") if p["id"] not in planned]
+        if missing:
+            reply["included_not_planned"] = missing
         return reply
 
     def get_outline(self, context, tool, args):
         return {"sections": self.outline()}
 
     def write_section(self, context, tool, args):
+        self._require_included(cited_ids(args["content"]), "be cited")
         summary = self.sections.write(
             args["section_id"], args["title"], args["content"], args.get("position")
         )
-        papers = {p["id"]: p["status"] for p in self.library.papers()}
         written = next(s for s in summary if s["id"] == args["section_id"])
-        reply = {"saved": args["section_id"], "words": written["words"], "sections": summary}
-        unknown = [i for i in written["cites"] if i not in papers]
-        excluded = [i for i in written["cites"] if papers.get(i) == "excluded"]
-        if unknown:
-            reply["warning_unknown"] = unknown
-        if excluded:
-            reply["warning_excluded"] = excluded
-        return reply
+        return {"saved": args["section_id"], "words": written["words"], "sections": summary}
 
     def read_sections(self, context, tool, args):
         if args.get("section_id"):
@@ -490,6 +528,7 @@ class RunTools:
             (LIBRARY_LIST, self.list_papers),
             (LIBRARY_GET, self.get_papers),
             (LIBRARY_DECIDE, self.decide),
+            (EXCLUDE_REMAINING, self.exclude_remaining),
             (LIBRARY_NOTE, self.note),
             (LIBRARY_TAG, self.tag),
             (SET_OUTLINE, self.set_outline),
@@ -515,6 +554,7 @@ TOOL_NAMES = [
         LIBRARY_LIST,
         LIBRARY_GET,
         LIBRARY_DECIDE,
+        EXCLUDE_REMAINING,
         LIBRARY_NOTE,
         LIBRARY_TAG,
         SET_OUTLINE,
