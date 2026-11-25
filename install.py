@@ -6,11 +6,9 @@
 2. Creates a private Python environment in .venv and installs the one
    dependency (PyYAML, for Agent Skills).
 3. Runs the tests: a complete scripted review, no AI and no key needed.
-4. Asks the one thing only you can answer: which AI model to use
-   (Gemini 4 Hydrogen by default).
 
-Run it again at any time; it only adds what is missing.
-python install.py --skip-model installs without asking (for scripts and CI).
+Then start the app (python run.py) and choose the AI model in it. Run this
+again at any time; it only adds what is missing.
 """
 
 from __future__ import annotations
@@ -87,13 +85,10 @@ def main() -> int:
     run(python, "-m", "pip", "install", "--quiet", "-r", "requirements.txt")
     print("\nSelf-check (a scripted review, no AI and no key needed):")
     run(python, "-m", "unittest", "discover", "-s", "tests", "-t", ".", "-q")
-    if "--skip-model" in sys.argv or not sys.stdin.isatty():
-        print("\nModel not chosen yet: run python run.py --setup later.")
-    else:
-        subprocess.run([str(python), "run.py", "--setup"], cwd=ROOT, check=False)
     print(
         "\nDone. Start the app with:\n"
         "  python run.py\n"
+        "and choose the AI model and enter its API key on the new-review page,\n"
         "or try it first without an AI model:\n"
         "  python run.py --demo\n"
         "See README.md for details."

@@ -1,8 +1,10 @@
 """The eight-stage workflow, end to end, with a scripted model."""
 
 import json
+import tempfile
+from pathlib import Path
 
-from tests.support import ServiceCase
+from tests.support import CHOICE, LABEL, ServiceCase
 
 
 class PipelineTests(ServiceCase):
@@ -51,7 +53,12 @@ class PipelineTests(ServiceCase):
         meta = service.skills_dir / "literature-search" / "graphs" / "english-literature.meta.json"
         meta = json.loads(meta.read_text())
         self.assertEqual((meta["last_run"]["outcome"], meta["runs"]["completed"]), ("completed", 1))
-        self.assertEqual(meta["last_run"]["environment"]["host"]["model"], "scripted")
+        self.assertEqual(meta["last_run"]["environment"]["host"]["model"], LABEL)
+        # The review records its model (never the key) and runs with it.
+        record = json.loads((folder / "run.json").read_text())
+        self.assertEqual((record["model"], record["model_choice"]), (LABEL, CHOICE))
+        self.assertNotIn("sk-test", (folder / "run.json").read_text())
+        self.assertEqual(self.chosen[-1], CHOICE)
 
 
 class RunControlTests(ServiceCase):
@@ -76,11 +83,44 @@ class RunControlTests(ServiceCase):
         self.assertEqual(service.list(), [])
 
     def test_no_model(self):
-        from lrg.model import NoModel, create_model
+        from lrg.model import NoModel
 
-        service = self.make_service(model_factory=lambda: create_model({}))
+        from tests.support import model_store
+
+        with tempfile.TemporaryDirectory() as folder:
+            service = self.make_service(models=model_store(Path(folder), choice=None, key=None))
+            with self.assertRaises(NoModel) as caught:
+                service.create({"topic": "Irony in Austen"})  # nothing chosen
+            self.assertEqual(caught.exception.code, "no_model")
+            with self.assertRaises(NoModel) as caught:  # chosen, but no key
+                service.create(
+                    {"topic": "Irony in Austen", "model": {"service": "claude", "model": "c"}}
+                )
+            self.assertEqual(caught.exception.code, "no_key")
+            with self.assertRaises(NoModel):
+                service.create(
+                    {"topic": "Irony in Austen", "model": {"service": "nope", "model": "m"}}
+                )
+            self.assertEqual(service.list(), [])
+
+    def test_each_review_uses_its_own_model(self):
+        service = self.make_service()
+        service.models.save_key("claude", "sk-ant")
+        first = service.create({"topic": "Irony in Austen"})
+        self.wait(first["id"])
+        second = service.create(
+            {"topic": "Irony in Austen", "model": {"service": "claude", "model": "claude-x"}}
+        )
+        self.wait(second["id"])
+        self.assertEqual(self.chosen, [CHOICE, {"service": "claude", "model": "claude-x"}])
+        self.assertEqual(service.models.current(), {"service": "claude", "model": "claude-x"})
+        # Removing the key stops a resume with a clear message.
+        service.cancel(second["id"])
+        service.models.save_key("claude", "")
+        from lrg.model import NoModel
+
         with self.assertRaises(NoModel):
-            service.create({"topic": "Irony in Austen"})
+            service.resume(second["id"])
 
     def test_cancel(self):
         service = self.make_service()
@@ -132,8 +172,8 @@ class RunControlTests(ServiceCase):
         (folder / "run.json").write_text(json.dumps(record))
         restarted = RunService(
             service.data,
-            model_factory=lambda: self.model,
-            model_name=lambda: "scripted",
+            models=service.models,
+            model_factory=lambda choice: self.model,
             openalex=service.searches["openalex"],
             arxiv=service.searches["arxiv"],
         )

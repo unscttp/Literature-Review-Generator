@@ -28,7 +28,7 @@ class I18nTests(unittest.TestCase):
     def test_every_key_used_exists(self):
         known = keys(self.en)
         html = (WEB / "index.html").read_text("utf-8")
-        used = set(re.findall(r'data-i18n(?:-placeholder)?="([\w.-]+)"', html))
+        used = set(re.findall(r'data-i18n(?:-placeholder|-title)?="([\w.-]+)"', html))
         for name in ("app.js", "viewer.js"):
             used |= set(re.findall(r'\bt\("([\w.-]+)"', (WEB / name).read_text("utf-8")))
         self.assertEqual(used - known, set())
@@ -54,6 +54,12 @@ class I18nTests(unittest.TestCase):
             "missing_sections",
         ):
             self.assertIn(kind, self.zh["report"]["issues"])
+
+    def test_every_service_has_a_name(self):
+        services = json.loads((ROOT / "config" / "models.json").read_text("utf-8"))["services"]
+        for service in services:
+            self.assertIn(service["id"], self.en["services"])
+            self.assertIn(service["id"], self.zh["services"])
 
     def test_options_are_translated(self):
         from lrg.pipeline import LANGUAGES, REVIEW_TYPES, SOURCES

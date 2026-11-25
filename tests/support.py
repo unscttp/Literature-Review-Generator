@@ -15,6 +15,26 @@ import lrg  # noqa: E402,F401  (puts DGS on the path)
 from lrg.demo import ScriptedModel, demo_arxiv, demo_openalex, demo_script  # noqa: E402
 
 
+CHOICE = {"service": "openai", "model": "gpt-test"}
+LABEL = "gpt-test · OpenAI"
+
+
+def model_store(folder: Path, *, lister=None, checker=None, choice=CHOICE, key="sk-test"):
+    """A model store in a temporary folder with a saved choice and key."""
+    from lrg.model import ModelStore
+
+    store = ModelStore(
+        Path(folder) / "model-config.json",
+        lister=lister or (lambda url, key: ["gpt-other", "gpt-test"]),
+        checker=checker or (lambda url, key, model, api: None),
+    )
+    if key:
+        store.save_key(choice["service"], key)
+    if choice:
+        store.save_choice(choice)
+    return store
+
+
 class ServiceCase(unittest.TestCase):
     def make_service(self, script=None, **kwargs):
         from lrg.pipeline import RunService
@@ -22,9 +42,10 @@ class ServiceCase(unittest.TestCase):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
         self.model = ScriptedModel(script or demo_script())
+        self.chosen = []  # the choices the service built models for
         options = dict(
-            model_factory=lambda: self.model,
-            model_name=lambda: "scripted",
+            models=model_store(Path(folder.name)),
+            model_factory=lambda choice: self.chosen.append(choice) or self.model,
             openalex=demo_openalex,
             arxiv=demo_arxiv,
         )

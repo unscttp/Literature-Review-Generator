@@ -171,6 +171,22 @@ textarea { resize: vertical; }
 .checks input { width: auto; }
 
 .notice { padding: 10px 12px; border-radius: 8px; }
+.label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+.inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inline select, .inline input { flex: 1; min-width: 0; }
+.inline > button { flex-shrink: 0; }
+.model-picker {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  background: var(--surface-2);
+}
+.model-picker legend { padding: 0 6px; }
+.key-ok { color: var(--completed); font-weight: 600; }
+.status-ok { color: var(--completed); }
+.status-error { color: var(--failed); }
+.key-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.key-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .notice.warning { background: var(--warning-bg); color: var(--warning-text); }
 .notice.error { background: var(--error-bg); color: var(--error-text); white-space: pre-wrap; }
 

@@ -27,7 +27,6 @@
   "notesPlaceholder": "Focus, things to leave out, the readers, the length ...",
   "start": "Start the review",
   "starting": "Starting ...",
-  "noModel": "No model is chosen yet. In the terminal, run: python run.py --setup",
   "budget": "Up to about {calls} model calls for the eight stages (their step limits grow with the number of papers), plus up to {graph} for each skill graph a stage runs. Most reviews need fewer; check your provider's rate limits and prices."
  },
  "options": {
@@ -196,9 +195,6 @@
  },
  "settings": {
   "heading": "Settings",
-  "model": "Model",
-  "noModel": "not chosen",
-  "modelHelp": "To choose another model, stop the app and run python run.py --setup in the terminal.",
   "openalex": "OpenAlex API key (optional)",
   "openalexHelp": "OpenAlex works without a key, with a shared daily budget. A free key from openalex.org gives you your own budget. It is stored only on this computer.",
   "keySet": "A key is saved.",
@@ -206,7 +202,12 @@
   "save": "Save",
   "remove": "Remove key",
   "saved": "Saved.",
-  "close": "Close"
+  "close": "Close",
+  "keys": "API keys",
+  "keysHelp": "Saved only on this computer (.lrg/config.json) and sent only to their service. Enter or change a key in the AI model section of a new review.",
+  "keySaved": "saved",
+  "noKey": "not saved",
+  "removeKey": "Remove"
  },
  "skills": {
   "heading": "Skills and sample graphs",
@@ -288,8 +289,50 @@
   "polish": "Revise the Chinese text"
  },
  "errors": {
-  "no_model": "No model is chosen yet. In the terminal, run: python run.py --setup",
+  "no_model": "Choose the AI model at the top of the form first.",
   "network": "The app does not answer. Is python run.py still running?",
-  "generic": "Something went wrong"
+  "generic": "Something went wrong",
+  "no_key": "No API key is saved for this service. Enter it in the AI model section."
+ },
+ "model": {
+  "heading": "AI model",
+  "service": "Service",
+  "model": "Model",
+  "refresh": "Ask the service again for its models",
+  "other": "Other model ID…",
+  "modelId": "Model ID",
+  "baseUrl": "Base URL of the API",
+  "key": "API key",
+  "keySaved": "API key saved.",
+  "change": "Change key",
+  "saveKey": "Save key",
+  "keyNote": "Stored only on this computer and sent only to {service}.",
+  "keyOptional": "Only if the API needs one. Stored only on this computer.",
+  "loading": "Asking the service which models your key can use …",
+  "needKey": "Enter the API key to see the models this key can use.",
+  "listFailed": "The model list could not be loaded: {error}",
+  "count": "{count} models available to your key.",
+  "suggested": "(suggested)",
+  "test": "Test",
+  "testing": "Testing …",
+  "works": "{model} answered. Ready to use.",
+  "failed": "That did not work: {problem}",
+  "demo": "Demo mode: a scripted model, no AI and no key."
+ },
+ "services": {
+  "gemini": "Google Gemini",
+  "claude": "Anthropic Claude",
+  "openai": "OpenAI GPT",
+  "deepseek": "DeepSeek",
+  "ollama": "Ollama (this computer)",
+  "lm-studio": "LM Studio (this computer)",
+  "custom": "Other OpenAI-compatible API"
+ },
+ "keyHints": {
+  "gemini": "from Google AI Studio, aistudio.google.com",
+  "claude": "from the Claude Console, console.anthropic.com",
+  "openai": "from platform.openai.com",
+  "deepseek": "from platform.deepseek.com",
+  "custom": "if the API needs one"
  }
 }

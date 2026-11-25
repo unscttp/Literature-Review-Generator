@@ -46,9 +46,8 @@ cd literature-review-generator
 python install.py
 ```
 
-`install.py` sets up everything in a private folder (`.venv`), runs the tests
-and asks which model to use (Gemini 4 Hydrogen unless you choose another).
-Then start the app:
+`install.py` sets up everything in a private folder (`.venv`) and runs the
+tests. Then start the app:
 
 ```bash
 python run.py
@@ -56,6 +55,15 @@ python run.py
 
 Your browser opens http://127.0.0.1:8765. Keep the terminal open while you
 use the app; Ctrl+C stops it.
+
+**Choose the model in the app.** At the top of the new-review page, pick the
+service (Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek, Ollama or LM
+Studio on your computer, or any other OpenAI-compatible API), paste its API key
+and save it. The model list then comes from the service itself: it shows the
+models your key can use, with the suggested one first (Gemini 4 Hydrogen,
+Claude Opus 5.5, GPT-6.2 Astra, DeepSeek V4 Pro). **Test** sends one small
+request to check the choice. Each review keeps the model it was started with;
+the last choice is preselected for the next one.
 
 **Try it without a model first:**
 
@@ -70,7 +78,7 @@ Downloaded the ZIP instead of using git? `install.py` fetches DGS by itself.
 
 ## Writing a review
 
-1. **New review.** Describe the topic and choose the review language, the
+1. **New review.** Choose the model, describe the topic and choose the review language, the
    citation style, the kind of review (narrative, scoping or systematic-style),
    the publication years, how many papers to include and the sources.
 2. **Approve the scope.** After a minute the scope appears. Approve it, or
@@ -161,13 +169,16 @@ repeating finished tool calls.
 | `config/rules.md` | Rules every stage receives: never invent literature, cite by id, language |
 | `config/settings.json` | Port, DGS engine settings, defaults of the new-review form |
 | `skills/` | The skills and their sample graphs (after editing a graph, run `python scripts/skill_graphs.py`) |
-| `.lrg/config.json` | Your model choice and key (created by the setup; only on your computer) |
+| `config/models.json` | The services the model menu offers and their suggested models |
+| `.lrg/config.json` | Your API keys (one per service) and last model choice, readable only by you |
 | `.lrg/settings.json` | Your OpenAlex key (set in the app's settings) |
 | `data/` | Your reviews and the installed skills |
 
-To use another model: `python run.py --setup`. The environment variables
-`DGS_API_KEY`, `DGS_MODEL` and `DGS_BASE_URL` override the saved model, and
-`LRG_OPENALEX_API_KEY` the OpenAlex key.
+Keys are saved on your computer only and sent only to their own service; the
+browser never gets them back. Remove them under *Settings*. If you prefer the
+terminal, `python run.py --setup` asks the same questions there. The
+environment variables `DGS_API_KEY`, `DGS_MODEL` and `DGS_BASE_URL` override the
+saved choice, and `LRG_OPENALEX_API_KEY` the OpenAlex key.
 
 **OpenAlex** works without a key, but everyone without a key shares a daily
 budget. A free key from [openalex.org](https://openalex.org) gives you your own;
@@ -192,9 +203,11 @@ seconds between requests, as arXiv asks.
 
 | Message | What to do |
 | --- | --- |
-| "No model is chosen yet" | Run `python run.py --setup`. |
+| "The model list could not be loaded: HTTP 401" | The service refused the key: paste it again (**Change key**). |
+| The model you want is not in the list | Choose **Other model ID…** and type it, or press ↻ to ask the service again. |
+| Ollama or LM Studio: "Could not connect" | Start Ollama or LM Studio's local server first. |
 | "Cannot use port 8765" | Another program uses it: `python run.py --port 8766`. |
-| A stage fails with HTTP 401 or 403 | The key was not accepted: `python run.py --setup`. |
+| A stage fails with HTTP 401 or 403 | The key was not accepted: save it again in the model section, then **Resume**. |
 | Timeouts or HTTP 429 from the model | The service is busy; DGS retries by itself. Press **Resume** if the run stopped. |
 | "OpenAlex refused the request: ... budget" | Add a free OpenAlex key under *Settings*, or wait until tomorrow. |
 | "Directed Growing Sheet is missing" | Run `python install.py`. |
@@ -216,6 +229,7 @@ so they need no key and no network. The code:
 | `lrg/sources.py` | OpenAlex and arXiv (standard library only) |
 | `lrg/graph_view.py`, `lrg/live.py` | The data behind the workflow viewer |
 | `lrg/server.py` | The local web server (standard library only) and its JSON API |
+| `lrg/model.py` | Services, API keys, live model lists and the per-review model choice |
 | `lrg/demo.py` | The scripted demo model |
 | `web/` | The interface: plain HTML, CSS and JavaScript; texts in `web/i18n/` |
 | `third_party/dgs` | Directed Growing Sheet (git submodule) |

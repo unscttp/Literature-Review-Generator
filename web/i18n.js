@@ -43,6 +43,10 @@ window.I18n = (() => {
   function apply(root = document) {
     root.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n); });
     root.querySelectorAll("[data-i18n-placeholder]").forEach((element) => { element.placeholder = t(element.dataset.i18nPlaceholder); });
+    root.querySelectorAll("[data-i18n-title]").forEach((element) => {
+      element.title = t(element.dataset.i18nTitle);
+      element.setAttribute("aria-label", element.title);
+    });
     document.documentElement.lang = language;
     document.title = t("app.title");
   }

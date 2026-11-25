@@ -27,6 +27,10 @@ ROUTES = [
     ("GET", r"/api/info", "info"),
     ("POST", r"/api/settings", "settings"),
     ("GET", r"/api/workflow", "workflow"),
+    ("GET", r"/api/models", "models"),
+    ("POST", r"/api/models/list", "model_list"),
+    ("POST", r"/api/models/check", "model_check"),
+    ("POST", r"/api/models/key", "model_key"),
     ("GET", r"/api/runs", "runs"),
     ("POST", r"/api/runs", "create"),
     ("GET", RUN, "run"),
@@ -58,7 +62,7 @@ class Api:
     def info(self, body, **_):
         return {
             "version": __version__,
-            "model": self.service.model_name(),
+            "demo": self.service.demo_label,
             "openalex_key": bool(local_settings().get("openalex_api_key")),
             "defaults": self.service.settings["defaults"],
             # Step limits per stage: base + per_paper * papers (see config/settings.json).
@@ -90,14 +94,44 @@ class Api:
     def workflow(self, body, **_):
         return self.service.workflow_view()
 
+    # -- the model -------------------------------------------------------------
+    # Keys go from the browser to this server and on to their service only; no
+    # answer ever contains one (state() says only whether a key is saved).
+
+    def models(self, body, **_):
+        if self.service.demo_label:
+            return {"demo": self.service.demo_label, "services": [], "current": None}
+        return {"demo": None, **self.service.models.state()}
+
+    @staticmethod
+    def _fields(body, required, optional=()):
+        if not isinstance(body, dict):
+            raise ApiError(400, "Send a JSON object.")
+        for name in (*required, *optional):
+            value = body.get(name)
+            if (name in required or value is not None) and not isinstance(value, str):
+                raise ApiError(400, f"{name} must be a string.")
+        return body
+
+    def model_list(self, body, **_):
+        body = self._fields(body, ["service"], ["base_url"])
+        return self.service.models.models(body["service"], body.get("base_url"))
+
+    def model_check(self, body, **_):
+        body = self._fields(body, ["service", "model"], ["base_url"])
+        problem = self.service.models.check(body)
+        return {"ok": problem is None, "problem": problem}
+
+    def model_key(self, body, **_):
+        body = self._fields(body, ["service"], ["api_key"])
+        self.service.models.save_key(body["service"], body.get("api_key"))
+        return self.models(None)
+
     def runs(self, body, **_):
         return {"runs": self.service.list()}
 
     def create(self, body, **_):
-        try:
-            return self.service.create(body)
-        except NoModel as exc:
-            raise ApiError(409, str(exc), "no_model") from None
+        return self.service.create(body)
 
     def run(self, body, run):
         return self.service.summary(run)
@@ -137,10 +171,7 @@ class Api:
         return self.service.cancel(run)
 
     def resume(self, body, run):
-        try:
-            return self.service.resume(run)
-        except NoModel as exc:
-            raise ApiError(409, str(exc), "no_model") from None
+        return self.service.resume(run)
 
     def dispatch(self, method: str, path: str, body):
         for route_method, pattern, name in ROUTES:
@@ -152,6 +183,10 @@ class Api:
                     raise ApiError(404, "No such review.", "not_found") from None
                 except RunError as exc:
                     raise ApiError(400, str(exc), "invalid") from None
+                except NoModel as exc:
+                    raise ApiError(
+                        400 if exc.code == "invalid" else 409, str(exc), exc.code
+                    ) from None
         if any(re.fullmatch(pattern, path) for _, pattern, _ in ROUTES):
             raise ApiError(405, "Method not allowed.")
         raise ApiError(404, "Not found.", "not_found")

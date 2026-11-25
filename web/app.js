@@ -65,7 +65,7 @@
   }
 
   function errorText(error) {
-    return error.code === "no_model" ? t("errors.no_model") : error.message;
+    return ["no_model", "no_key"].includes(error.code) ? t(`errors.${error.code}`) : error.message;
   }
 
   function formatDate(seconds) {
@@ -121,8 +121,241 @@
     const target = document.querySelector("input[name=target_papers]");
     if (!target.value) target.value = info.defaults.target_papers;
     renderBudget();
-    $("no-model").hidden = Boolean(info.model);
-    $("start-button").disabled = !info.model;
+  }
+
+  // -- the model -----------------------------------------------------------------
+  // The service and model are chosen here; the list of models comes from the
+  // service itself (with the saved key). Keys are sent to the local server once
+  // and never come back: the server only says whether one is saved.
+
+  const OTHER = "__other__";
+
+  function serviceOf(id) {
+    return state.models?.services.find((service) => service.id === id);
+  }
+
+  function serviceName(service) {
+    return I18n.has(`services.${service.id}`) ? t(`services.${service.id}`) : service.label;
+  }
+
+  async function loadModels() {
+    try {
+      state.models = await api("/api/models");
+    } catch (error) {
+      state.models = null;
+      setModelStatus(errorText(error), "error");
+      return;
+    }
+    if (state.models.demo) { renderModelPicker(); return; }
+    const current = state.models.current;
+    const id = current && serviceOf(current.service) ? current.service : state.models.default_service;
+    selectService(id, current && current.service === id ? current : null);
+  }
+
+  function selectService(id, saved) {
+    const service = serviceOf(id);
+    state.pick = {
+      service: id,
+      model: saved?.model || service.suggested_model || "",
+      baseUrl: saved?.base_url || service.base_url || "",
+      list: [],
+      error: null,
+      loading: false,
+      other: false,
+      changingKey: false,
+      checked: null,
+    };
+    refreshModelList();
+  }
+
+  function modelChoice() {
+    const pick = state.pick;
+    const choice = { service: pick.service, model: pick.model.trim() };
+    if (!serviceOf(pick.service).fixed_base_url) choice.base_url = pick.baseUrl.trim();
+    return choice;
+  }
+
+  function modelReady() {
+    if (state.models?.demo) return true;
+    const pick = state.pick;
+    const service = pick && serviceOf(pick.service);
+    if (!service || !pick.model.trim()) return false;
+    if (!service.fixed_base_url) return Boolean(pick.baseUrl.trim());
+    return !service.needs_key || service.has_key;
+  }
+
+  function setModelStatus(text, kind) {
+    const status = $("model-status");
+    status.textContent = text || "";
+    status.className = `small ${kind ? `status-${kind}` : "muted"}`;
+  }
+
+  async function refreshModelList() {
+    const pick = state.pick;
+    const service = serviceOf(pick.service);
+    if (service.needs_key && service.fixed_base_url && !service.has_key) {
+      Object.assign(pick, { list: [], error: "no_key", loading: false });
+      renderModelPicker();
+      return;
+    }
+    if (!service.fixed_base_url && !pick.baseUrl.trim()) {
+      Object.assign(pick, { list: [], error: null, loading: false });
+      renderModelPicker();
+      return;
+    }
+    pick.loading = true;
+    renderModelPicker();
+    const body = { service: pick.service };
+    if (!service.fixed_base_url) body.base_url = pick.baseUrl.trim();
+    try {
+      const reply = await api("/api/models/list", { method: "POST", body });
+      if (state.pick !== pick) return; // another service was chosen meanwhile
+      Object.assign(pick, { list: reply.models, error: reply.error, loading: false });
+      // The service refused the key: offer to enter another one right away.
+      if (/HTTP 40[13]/.test(reply.error || "")) pick.changingKey = true;
+      if (!pick.model && reply.models.length) pick.model = reply.models[0];
+      pick.other = Boolean(pick.model) && reply.models.length > 0 && !reply.models.includes(pick.model)
+        && pick.model !== service.suggested_model;
+    } catch (error) {
+      Object.assign(pick, { list: [], error: errorText(error), loading: false });
+    }
+    renderModelPicker();
+  }
+
+  function renderModelPicker() {
+    const demo = state.models?.demo;
+    $("model-demo").hidden = !demo;
+    $("model-controls").hidden = Boolean(demo);
+    if (demo) {
+      $("model-demo").textContent = t("model.demo");
+      $("start-button").disabled = false;
+      return;
+    }
+    const pick = state.pick;
+    if (!pick) { $("start-button").disabled = true; return; }
+    const service = serviceOf(pick.service);
+
+    $("service-select").replaceChildren(
+      ...state.models.services.map((s) => h("option", { value: s.id }, serviceName(s))),
+    );
+    $("service-select").value = pick.service;
+
+    const ids = [...pick.list];
+    if (service.suggested_model && !ids.includes(service.suggested_model) && !pick.list.length) {
+      ids.unshift(service.suggested_model);
+    }
+    if (pick.model && !ids.includes(pick.model) && !pick.other) ids.unshift(pick.model);
+    const options = ids.map((id) =>
+      h("option", { value: id }, id === service.suggested_model ? `${id} ${t("model.suggested")}` : id));
+    options.push(h("option", { value: OTHER }, t("model.other")));
+    $("model-select").replaceChildren(...options);
+    $("model-select").value = pick.other ? OTHER : pick.model || OTHER;
+    $("model-select").disabled = pick.loading;
+    $("refresh-models").disabled = pick.loading;
+    const typing = pick.other || !pick.model;
+    $("model-input-field").hidden = !typing;
+    if (typing && document.activeElement !== $("model-input")) $("model-input").value = pick.model;
+
+    $("base-url-field").hidden = service.fixed_base_url;
+    if (document.activeElement !== $("base-url-input")) $("base-url-input").value = pick.baseUrl;
+
+    $("key-field").hidden = !service.needs_key;
+    const hint = I18n.has(`keyHints.${service.id}`) ? t(`keyHints.${service.id}`) : service.key_hint;
+    $("key-label").textContent = `${t("model.key")} (${hint || serviceName(service)})`;
+    const showEntry = !service.has_key || pick.changingKey;
+    $("key-saved").hidden = showEntry;
+    $("key-entry").hidden = !showEntry;
+    $("key-note").textContent = t(service.fixed_base_url ? "model.keyNote" : "model.keyOptional", { service: serviceName(service) });
+
+    if (pick.checked) {
+      setModelStatus(pick.checked.ok ? t("model.works", { model: pick.checked.model }) : t("model.failed", { problem: pick.checked.problem }), pick.checked.ok ? "ok" : "error");
+    } else if (pick.loading) {
+      setModelStatus(t("model.loading"));
+    } else if (pick.error === "no_key") {
+      setModelStatus(t("model.needKey"));
+    } else if (pick.error) {
+      setModelStatus(t("model.listFailed", { error: pick.error }), "error");
+    } else if (pick.list.length) {
+      setModelStatus(t("model.count", { count: pick.list.length }));
+    } else {
+      setModelStatus("");
+    }
+    $("test-model").disabled = !modelReady() || pick.loading;
+    $("start-button").disabled = !modelReady();
+  }
+
+  async function saveModelKey() {
+    const pick = state.pick;
+    const key = $("key-input").value.trim();
+    if (!key) { $("key-input").focus(); return; }
+    try {
+      state.models = await api("/api/models/key", { method: "POST", body: { service: pick.service, api_key: key } });
+      $("key-input").value = "";
+      pick.changingKey = false;
+      pick.checked = null;
+      renderSettings();
+      await refreshModelList();
+    } catch (error) {
+      setModelStatus(errorText(error), "error");
+    }
+  }
+
+  async function testModel() {
+    const pick = state.pick;
+    const choice = modelChoice();
+    $("test-model").disabled = true;
+    setModelStatus(t("model.testing"));
+    try {
+      const reply = await api("/api/models/check", { method: "POST", body: choice });
+      pick.checked = { ok: reply.ok, problem: reply.problem, model: choice.model };
+    } catch (error) {
+      pick.checked = { ok: false, problem: errorText(error), model: choice.model };
+    }
+    renderModelPicker();
+  }
+
+  function bindModelPicker() {
+    $("service-select").addEventListener("change", (event) => {
+      const current = state.models.current;
+      const id = event.target.value;
+      selectService(id, current && current.service === id ? current : null);
+    });
+    $("model-select").addEventListener("change", (event) => {
+      const pick = state.pick;
+      pick.checked = null;
+      if (event.target.value === OTHER) {
+        pick.other = true;
+        pick.model = "";
+        renderModelPicker();
+        $("model-input").focus();
+      } else {
+        pick.other = false;
+        pick.model = event.target.value;
+        renderModelPicker();
+      }
+    });
+    $("model-input").addEventListener("input", (event) => {
+      state.pick.model = event.target.value;
+      state.pick.checked = null;
+      $("test-model").disabled = !modelReady();
+      $("start-button").disabled = !modelReady();
+    });
+    $("base-url-input").addEventListener("change", (event) => {
+      state.pick.baseUrl = event.target.value;
+      state.pick.checked = null;
+      refreshModelList();
+    });
+    $("refresh-models").addEventListener("click", refreshModelList);
+    $("change-key").addEventListener("click", () => {
+      state.pick.changingKey = true;
+      renderModelPicker();
+      $("key-input").focus();
+    });
+    $("save-model-key").addEventListener("click", saveModelKey);
+    $("key-input").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); saveModelKey(); }
+    });
+    $("test-model").addEventListener("click", testModel);
   }
 
   /** The most model calls a review of this size may make (the stages' step limits). */
@@ -211,6 +444,7 @@
       sources: data.getAll("sources"),
       notes: (data.get("notes") || "").trim(),
     };
+    if (!state.models?.demo) body.model = modelChoice();
     const error = $("form-error");
     error.hidden = true;
     const button = $("start-button");
@@ -218,16 +452,17 @@
     button.textContent = t("form.starting");
     try {
       const run = await api("/api/runs", { method: "POST", body });
-      form.reset();
-      fillOptions();
+      form.querySelector("[name=topic]").value = "";
+      form.querySelector("[name=notes]").value = "";
+      state.models = await api("/api/models"); // the choice is now the default
       await loadRuns();
       location.hash = `#run/${run.id}`;
     } catch (failure) {
       error.textContent = errorText(failure);
       error.hidden = false;
     } finally {
-      button.disabled = !state.info?.model;
       button.textContent = t("form.start");
+      renderModelPicker();
     }
   }
 
@@ -559,9 +794,29 @@
   // -- settings ----------------------------------------------------------------
 
   function renderSettings() {
-    $("settings-model").textContent = state.info?.model || t("settings.noModel");
+    const services = (state.models?.services || []).filter((service) => service.needs_key);
+    $("key-list").replaceChildren(
+      ...services.map((service) =>
+        h("li", {},
+          h("span", {}, serviceName(service), " — ",
+            h("span", { class: service.has_key ? "key-ok" : "muted" }, service.has_key ? t("settings.keySaved") : t("settings.noKey"))),
+          service.has_key
+            ? h("button", { type: "button", class: "ghost", onclick: () => removeModelKey(service.id) }, t("settings.removeKey"))
+            : null,
+        )),
+    );
     $("openalex-state").textContent = state.info?.openalex_key ? t("settings.keySet") : t("settings.keyNotSet");
     $("remove-key").hidden = !state.info?.openalex_key;
+  }
+
+  async function removeModelKey(id) {
+    try {
+      state.models = await api("/api/models/key", { method: "POST", body: { service: id, api_key: "" } });
+      renderSettings();
+      if (state.pick?.service === id) selectService(id, state.models.current);
+    } catch (error) {
+      $("openalex-state").textContent = errorText(error);
+    }
   }
 
   async function saveKey(value) {
@@ -608,6 +863,7 @@
   async function start() {
     await I18n.init();
     $("new-form").addEventListener("submit", submitNew);
+    bindModelPicker();
     document.querySelector("input[name=target_papers]").addEventListener("input", renderBudget);
     $("new-button").addEventListener("click", () => { location.hash = "#new"; closeMenu(); });
     $("language-button").addEventListener("click", () => I18n.use(I18n.other()));
@@ -641,6 +897,8 @@
     });
     document.addEventListener("languagechange", () => {
       fillOptions();
+      renderModelPicker();
+      renderSettings();
       renderOverview();
       renderRuns();
       $("approvals").dataset.shown = "";
@@ -659,7 +917,7 @@
       $("form-error").hidden = false;
     }
     fillOptions();
-    await loadRuns();
+    await Promise.all([loadModels(), loadRuns()]);
     route();
   }
 

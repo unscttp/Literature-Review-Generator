@@ -33,14 +33,18 @@ cd literature-review-generator
 python install.py
 ```
 
-`install.py` 会把所需的一切安装到独立目录（`.venv`）中，运行测试，并询问使用哪个模型
-（默认 Gemini 4 Hydrogen，也可以选择其他模型）。然后启动程序：
+`install.py` 会把所需的一切安装到独立目录（`.venv`）中，并运行测试。然后启动程序：
 
 ```bash
 python run.py
 ```
 
 浏览器会打开 http://127.0.0.1:8765。使用期间请保持终端窗口开启；按 Ctrl+C 停止程序。
+
+**在程序中选择模型。** 在新建综述页面顶部选择服务（Google Gemini、Anthropic Claude、OpenAI GPT、DeepSeek、
+本机的 Ollama 或 LM Studio，或其他 OpenAI 兼容 API），粘贴并保存它的 API 密钥。模型列表直接来自该服务：
+显示你的密钥可用的模型，推荐模型排在最前（Gemini 4 Hydrogen、Claude Opus 5.5、GPT-6.2 Astra、DeepSeek V4 Pro）。
+点击**测试**会发送一次很小的请求来检查所选模型。每篇综述都使用开始时选定的模型；下一次新建综述时会预先选中上次的选择。
 
 **不选模型，先试一试：**
 
@@ -55,7 +59,7 @@ python run.py --demo
 
 ## 撰写一篇综述
 
-1. **新建综述。** 描述题目，选择综述语言、引用格式、综述类型（叙述性、范围综述或系统性风格）、
+1. **新建综述。** 选择模型，描述题目，选择综述语言、引用格式、综述类型（叙述性、范围综述或系统性风格）、
    发表年份、计划纳入的文献数量和文献来源。
 2. **批准范围。** 大约一分钟后会出现综述范围。可以批准，也可以写明需要修改的地方后退回。
 3. **查看进度。** “工作流”标签页显示各个阶段，点击阶段可以查看它的结果。“文献库”列出检索到的所有文献，
@@ -126,12 +130,14 @@ python run.py --demo
 | `config/rules.md` | 所有阶段都会收到的规则：不得编造文献、按编号引用、使用的语言 |
 | `config/settings.json` | 端口、DGS 引擎设置、新建综述表单的默认值 |
 | `skills/` | 技能及其示例图（修改示例图后请运行 `python scripts/skill_graphs.py`） |
-| `.lrg/config.json` | 你选择的模型和密钥（由设置程序创建，只保存在本机） |
+| `config/models.json` | 模型菜单提供的服务及其推荐模型 |
+| `.lrg/config.json` | 你的 API 密钥（每个服务一个）和上次选择的模型，只有你本人可读 |
 | `.lrg/settings.json` | 你的 OpenAlex 密钥（在程序的“设置”中填写） |
 | `data/` | 你的综述和已安装的技能 |
 
-更换模型：`python run.py --setup`。环境变量 `DGS_API_KEY`、`DGS_MODEL` 和 `DGS_BASE_URL`
-优先于已保存的模型设置，`LRG_OPENALEX_API_KEY` 优先于已保存的 OpenAlex 密钥。
+密钥只保存在本机，只发送给对应的服务，浏览器不会再收到密钥。可在“设置”中删除密钥。
+如果更习惯终端，`python run.py --setup` 会在终端中询问同样的问题。环境变量 `DGS_API_KEY`、`DGS_MODEL` 和
+`DGS_BASE_URL` 优先于已保存的选择，`LRG_OPENALEX_API_KEY` 优先于已保存的 OpenAlex 密钥。
 
 **OpenAlex** 不需要密钥也能使用，但所有无密钥用户共享每日额度。在 [openalex.org](https://openalex.org)
 免费申请的密钥有独立额度；请在“设置”中填写。**arXiv** 不需要密钥；按照 arXiv 的要求，程序每两次请求之间间隔三秒。
@@ -148,9 +154,11 @@ python run.py --demo
 
 | 提示 | 处理方法 |
 | --- | --- |
-| “还没有选择模型” | 运行 `python run.py --setup`。 |
+| “无法获取模型列表：HTTP 401” | 服务拒绝了该密钥：请重新粘贴（**更换密钥**）。 |
+| 列表中没有想用的模型 | 选择**其他模型 ID……**并输入，或点击 ↻ 重新向服务查询。 |
+| Ollama 或 LM Studio：“Could not connect” | 请先启动 Ollama 或 LM Studio 的本地服务器。 |
 | “Cannot use port 8765” | 端口被其他程序占用：`python run.py --port 8766`。 |
-| 阶段失败并提示 HTTP 401 或 403 | 密钥未被接受：运行 `python run.py --setup`。 |
+| 阶段失败并提示 HTTP 401 或 403 | 密钥未被接受：在模型部分重新保存密钥，然后点击**继续**。 |
 | 模型超时或 HTTP 429 | 服务繁忙；DGS 会自动重试。如果运行已停止，请点击**继续**。 |
 | “OpenAlex refused the request: ... budget” | 在“设置”中填写免费的 OpenAlex 密钥，或等到第二天。 |
 | “Directed Growing Sheet is missing” | 运行 `python install.py`。 |
@@ -171,6 +179,7 @@ python -m unittest discover -s tests -t .
 | `lrg/sources.py` | OpenAlex 和 arXiv（仅使用标准库） |
 | `lrg/graph_view.py`、`lrg/live.py` | 工作流视图背后的数据 |
 | `lrg/server.py` | 本地 Web 服务器（仅使用标准库）及其 JSON 接口 |
+| `lrg/model.py` | 服务、API 密钥、实时模型列表以及每篇综述的模型选择 |
 | `lrg/demo.py` | 演示用的脚本模型 |
 | `web/` | 界面：纯 HTML、CSS 和 JavaScript；界面文字在 `web/i18n/` 中 |
 | `third_party/dgs` | Directed Growing Sheet（git 子模块） |

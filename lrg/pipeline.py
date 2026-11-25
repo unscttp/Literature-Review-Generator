@@ -39,7 +39,7 @@ from . import ROOT
 from .graph_view import task_graph
 from .library import Library, write_json
 from .live import LiveTasks
-from .model import create_model, local_settings, model_label, with_rules
+from .model import ModelStore, local_settings, with_rules
 from .references import STYLES
 from .report import build, check
 from .skills import install_skill
@@ -136,8 +136,9 @@ class RunService:
         data_dir: Path | None = None,
         *,
         settings: dict | None = None,
-        model_factory: Callable[[], Callable] = create_model,
-        model_name: Callable[[], str | None] = model_label,
+        models: ModelStore | None = None,
+        model_factory: Callable[[dict], Callable] | None = None,
+        demo_label: str | None = None,
         openalex=openalex_search,
         arxiv=arxiv_search,
     ) -> None:
@@ -148,8 +149,11 @@ class RunService:
         self.skills_dir = self.data / "skills"
         for name in SKILLS:
             install_skill(ROOT / "skills" / name, self.skills_dir / name)
-        self.model_factory = model_factory
-        self.model_name = model_name
+        # The AI services, keys and saved choice. Each review records its own choice.
+        self.models = models or ModelStore()
+        self.model_factory = model_factory or self.models.adapter
+        # Demo mode: a scripted model; reviews need no choice and no key.
+        self.demo_label = demo_label
         self.searches = {"openalex": openalex, "arxiv": arxiv}
         self.allowances = AllowanceRegistry()
         for path in sorted((CONFIG / "allowances").glob("*.json")):
@@ -230,10 +234,23 @@ class RunService:
 
     # -- the engine ----------------------------------------------------------------
 
-    def _engine(self, run_id: str, tools: RunTools, state: RunState, root: Task) -> WorkflowEngine:
+    def model_label(self, choice: dict | None) -> str:
+        if self.demo_label:
+            return self.demo_label
+        return self.models.label(choice) if choice else "?"
+
+    def _choice(self, record: dict) -> dict | None:
+        """The model a review uses (reviews from before 1.1 use the saved default)."""
+        return record.get("model_choice") or self.models.current()
+
+    def _engine(
+        self, run_id: str, tools: RunTools, state: RunState, root: Task, choice: dict | None
+    ) -> WorkflowEngine:
         engine = WorkflowEngine(self.allowances, tools=tools.module(self.skills_dir))
         engine.setting_overrides = dict(self.settings["engine"])
-        engine.host_environment = {"model": self.model_name() or "unknown"}
+        # Recorded with every run of a skill graph: the graph's history then says
+        # which model it last worked with.
+        engine.host_environment = {"model": self.model_label(choice)}
 
         def observe(task, execution):
             state.live.observe(task, execution)
@@ -248,7 +265,7 @@ class RunService:
 
             return call
 
-        model = with_rules(self.model_factory(), self.rules, lambda: state.cancelled)
+        model = with_rules(self.model_factory(choice), self.rules, lambda: state.cancelled)
         engine.register_llm(NODE_TYPE, saved_model(model), memory_writer=False)
 
         def scope_gate(context, result, config):
@@ -281,7 +298,7 @@ class RunService:
             task.metadata["run_id"] = run_id
             state.task = task
             tools = self._tools(run_id, record["request"])
-            engine = self._engine(run_id, tools, state, task)
+            engine = self._engine(run_id, tools, state, task, self._choice(record))
             if retry:
                 for execution in task.executions:
                     if execution.status == "running":  # the app stopped mid-stage
@@ -340,7 +357,12 @@ class RunService:
 
     def create(self, raw: dict) -> dict:
         request = validate_request(raw, self.settings["defaults"])
-        self.model_factory()  # fail now, not in the thread, if no model is chosen
+        if self.demo_label:
+            choice = {"service": "demo", "model": "demo"}
+        else:
+            # Fails now, not in the thread, if the model is unknown or has no key.
+            choice = self.models.clean(raw.get("model") or self.models.current())
+            self.models.save_choice(choice)  # the default for the next review
         run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
         folder = self.runs_dir / run_id
         folder.mkdir(parents=True)
@@ -352,7 +374,8 @@ class RunService:
                 "title": request["topic"],
                 "request": request,
                 "status": "queued",
-                "model": self.model_name(),
+                "model": self.model_label(choice),
+                "model_choice": choice,
                 "created": now,
                 "updated": now,
                 "task_id": None,
@@ -389,8 +412,11 @@ class RunService:
         return self.summary(run_id)
 
     def resume(self, run_id: str) -> dict:
-        if self.record(run_id)["status"] not in ("interrupted", "failed", "cancelled"):
+        record = self.record(run_id)
+        if record["status"] not in ("interrupted", "failed", "cancelled"):
             raise RunError("Only interrupted, failed or cancelled runs can be resumed.")
+        if not self.demo_label:
+            self.models.resolve(self._choice(record))  # the key may have been removed
         task = self._task(run_id)
         if task is not None and any(
             request["status"] == "rejected" and not request["details"].get("on_reject")

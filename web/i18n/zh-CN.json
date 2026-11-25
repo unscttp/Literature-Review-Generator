@@ -27,7 +27,6 @@
   "notesPlaceholder": "侧重点、需要排除的内容、目标读者、篇幅等",
   "start": "开始综述",
   "starting": "正在开始……",
-  "noModel": "还没有选择模型。请在终端中运行：python run.py --setup",
   "budget": "八个阶段最多约 {calls} 次模型调用（步数上限随文献数量增加）；阶段每运行一张技能图，最多再增加 {graph} 次。大多数综述用不了这么多；请留意服务商的速率限制和费用。"
  },
  "options": {
@@ -196,9 +195,6 @@
  },
  "settings": {
   "heading": "设置",
-  "model": "模型",
-  "noModel": "未选择",
-  "modelHelp": "如需更换模型，请停止本程序，并在终端中运行 python run.py --setup。",
   "openalex": "OpenAlex API 密钥（可选）",
   "openalexHelp": "OpenAlex 不需要密钥也能使用，但所有无密钥用户共享每日额度。在 openalex.org 免费申请的密钥有独立额度。密钥只保存在本机。",
   "keySet": "已保存密钥。",
@@ -206,7 +202,12 @@
   "save": "保存",
   "remove": "删除密钥",
   "saved": "已保存。",
-  "close": "关闭"
+  "close": "关闭",
+  "keys": "API 密钥",
+  "keysHelp": "只保存在本机（.lrg/config.json），只发送给对应的服务。可在新建综述页面的“AI 模型”部分填写或更换密钥。",
+  "keySaved": "已保存",
+  "noKey": "未保存",
+  "removeKey": "删除"
  },
  "skills": {
   "heading": "技能与示例图",
@@ -288,8 +289,50 @@
   "polish": "修改中文文本"
  },
  "errors": {
-  "no_model": "还没有选择模型。请在终端中运行：python run.py --setup",
+  "no_model": "请先在表单顶部选择 AI 模型。",
   "network": "程序没有响应。python run.py 是否仍在运行？",
-  "generic": "出错了"
+  "generic": "出错了",
+  "no_key": "该服务还没有保存 API 密钥。请在“AI 模型”部分填写。"
+ },
+ "model": {
+  "heading": "AI 模型",
+  "service": "服务",
+  "model": "模型",
+  "refresh": "重新向服务查询可用模型",
+  "other": "其他模型 ID……",
+  "modelId": "模型 ID",
+  "baseUrl": "API 的基础 URL",
+  "key": "API 密钥",
+  "keySaved": "已保存 API 密钥。",
+  "change": "更换密钥",
+  "saveKey": "保存密钥",
+  "keyNote": "只保存在本机，只发送给 {service}。",
+  "keyOptional": "仅在该 API 需要时填写。只保存在本机。",
+  "loading": "正在向服务查询你的密钥可用的模型……",
+  "needKey": "请输入 API 密钥，以查看该密钥可用的模型。",
+  "listFailed": "无法获取模型列表：{error}",
+  "count": "你的密钥可用的模型共 {count} 个。",
+  "suggested": "（推荐）",
+  "test": "测试",
+  "testing": "正在测试……",
+  "works": "{model} 已响应，可以使用。",
+  "failed": "测试失败：{problem}",
+  "demo": "演示模式：使用预设脚本，不使用 AI，也不需要密钥。"
+ },
+ "services": {
+  "gemini": "Google Gemini",
+  "claude": "Anthropic Claude",
+  "openai": "OpenAI GPT",
+  "deepseek": "DeepSeek",
+  "ollama": "Ollama（本机）",
+  "lm-studio": "LM Studio（本机）",
+  "custom": "其他 OpenAI 兼容 API"
+ },
+ "keyHints": {
+  "gemini": "在 Google AI Studio（aistudio.google.com）获取",
+  "claude": "在 Claude Console（console.anthropic.com）获取",
+  "openai": "在 platform.openai.com 获取",
+  "deepseek": "在 platform.deepseek.com 获取",
+  "custom": "仅在该 API 需要时填写"
  }
 }

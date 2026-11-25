@@ -34,7 +34,7 @@ class ServerTests(ServiceCase):
 
     def test_a_review_over_http(self):
         status, info = self.json("/api/info")
-        self.assertEqual((status, info["model"]), (200, "scripted"))
+        self.assertEqual((status, info["demo"]), (200, None))
         self.assertIn("gbt7714", info["options"]["style"])
         status, error = self.json("/api/runs", "POST", {"topic": "x"})
         self.assertEqual((status, error["code"]), (400, "invalid"))
@@ -107,3 +107,32 @@ class ServerTests(ServiceCase):
             self.assertFalse(result["openalex_key"])
             status, _ = self.json("/api/settings", "POST", {"model": "x"})
             self.assertEqual(status, 400)
+
+    def test_choosing_a_model_over_http(self):
+        status, state = self.json("/api/models")
+        self.assertEqual(state["current"], {"service": "openai", "model": "gpt-test"})
+        self.assertNotIn("sk-test", json.dumps(state))
+        status, reply = self.json("/api/models/list", "POST", {"service": "openai"})
+        self.assertEqual(reply["models"], ["gpt-test", "gpt-other"])
+        status, reply = self.json("/api/models/list", "POST", {"service": "claude"})
+        self.assertEqual(reply["error"], "no_key")
+        status, state = self.json(
+            "/api/models/key", "POST", {"service": "claude", "api_key": "sk-ant"}
+        )
+        self.assertTrue(next(s for s in state["services"] if s["id"] == "claude")["has_key"])
+        self.assertNotIn("sk-ant", json.dumps(state))
+        status, reply = self.json("/api/models/check", "POST", {"service": "claude", "model": "c"})
+        self.assertEqual((status, reply), (200, {"ok": True, "problem": None}))
+        status, error = self.json("/api/models/check", "POST", {"service": "gemini", "model": "g"})
+        self.assertEqual((status, error["code"]), (409, "no_key"))
+        status, error = self.json("/api/models/list", "POST", {"service": 3})
+        self.assertEqual(status, 400)
+        status, run = self.json(
+            "/api/runs", "POST", {"topic": "Irony", "model": {"service": "claude", "model": "c"}}
+        )
+        self.assertEqual((status, run["model"]), (201, "c · Anthropic"))
+        status, error = self.json(
+            "/api/runs", "POST", {"topic": "Irony", "model": {"service": "gemini", "model": "g"}}
+        )
+        self.assertEqual((status, error["code"]), (409, "no_key"))
+        self.wait(run["id"])

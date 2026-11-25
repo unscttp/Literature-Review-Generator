@@ -41,8 +41,41 @@
         <div class="card">
           <h2 data-i18n="form.heading"></h2>
           <p class="muted" data-i18n="form.intro"></p>
-          <p class="notice warning" id="no-model" data-i18n="form.noModel" hidden></p>
           <form id="new-form" novalidate>
+            <fieldset class="field model-picker" id="model-picker">
+              <legend data-i18n="model.heading"></legend>
+              <p class="notice" id="model-demo" hidden></p>
+              <div id="model-controls">
+                <div class="grid">
+                  <label class="field"><span data-i18n="model.service"></span><select id="service-select"></select></label>
+                  <div class="field">
+                    <label for="model-select" class="label" data-i18n="model.model"></label>
+                    <div class="inline">
+                      <select id="model-select"></select>
+                      <button type="button" class="ghost" id="refresh-models" data-i18n-title="model.refresh" aria-label="Refresh">↻</button>
+                    </div>
+                  </div>
+                </div>
+                <label class="field" id="model-input-field" hidden><span data-i18n="model.modelId"></span><input id="model-input" maxlength="200" autocomplete="off" spellcheck="false"></label>
+                <label class="field" id="base-url-field" hidden><span data-i18n="model.baseUrl"></span><input id="base-url-input" type="url" placeholder="https://host/v1" autocomplete="off" spellcheck="false"></label>
+                <div class="field" id="key-field" hidden>
+                  <span class="label" id="key-label"></span>
+                  <div class="inline" id="key-saved" hidden>
+                    <span class="key-ok" data-i18n="model.keySaved"></span>
+                    <button type="button" class="ghost" id="change-key" data-i18n="model.change"></button>
+                  </div>
+                  <div class="inline" id="key-entry" hidden>
+                    <input id="key-input" type="password" maxlength="500" autocomplete="off" spellcheck="false">
+                    <button type="button" id="save-model-key" data-i18n="model.saveKey"></button>
+                  </div>
+                  <p class="muted small" id="key-note"></p>
+                </div>
+                <div class="inline">
+                  <button type="button" class="ghost" id="test-model" data-i18n="model.test"></button>
+                  <span class="small" id="model-status" role="status"></span>
+                </div>
+              </div>
+            </fieldset>
             <label class="field">
               <span data-i18n="form.topic"></span>
               <textarea name="topic" rows="2" required minlength="3" maxlength="500" data-i18n-placeholder="form.topicPlaceholder"></textarea>
@@ -139,9 +172,9 @@
   <dialog id="settings-dialog">
     <form method="dialog" class="dialog-body">
       <h2 data-i18n="settings.heading"></h2>
-      <h3 data-i18n="settings.model"></h3>
-      <p><strong id="settings-model"></strong></p>
-      <p class="muted small" data-i18n="settings.modelHelp"></p>
+      <h3 data-i18n="settings.keys"></h3>
+      <p class="muted small" data-i18n="settings.keysHelp"></p>
+      <ul class="key-list" id="key-list"></ul>
       <h3 data-i18n="settings.openalex"></h3>
       <p class="muted small" data-i18n="settings.openalexHelp"></p>
       <p class="small" id="openalex-state"></p>
