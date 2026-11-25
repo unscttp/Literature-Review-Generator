@@ -142,6 +142,17 @@ LIBRARY_GET = ToolDefinition(
         {"ids": {"type": "array", "items": _ID, "minItems": 1, "maxItems": 8}}, ["ids"]
     ),
 )
+SCREEN_BATCH = 25
+NEXT_CANDIDATES = ToolDefinition(
+    "library.next_candidates",
+    "low",
+    description=(
+        f"Screening queue: the next {SCREEN_BATCH} undecided candidates with their abstracts, "
+        "and how many remain. Decide all of them with one library_decide call before asking "
+        "for the next batch; until then this names the papers still to decide."
+    ),
+    input_schema=_object({}),
+)
 LIBRARY_DECIDE = ToolDefinition(
     "library.decide",
     "low",
@@ -300,6 +311,11 @@ CHECK_REVIEW = ToolDefinition(
 )
 
 
+def _clip_abstract(text: str | None, limit: int = 700) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
 class RunTools:
     """The tool handlers of one run, bound to its folder."""
 
@@ -421,6 +437,32 @@ class RunTools:
                 missing.append(paper_id)
         return {"papers": found, **({"unknown": missing} if missing else {})}
 
+    def next_candidates(self, context, tool, args):
+        batch = self.library.next_batch(SCREEN_BATCH)
+        counts = self.library.counts()
+        progress = {
+            "candidates_left": counts["candidate"],
+            "included": counts["included"],
+            "excluded": counts["excluded"],
+        }
+        if "decide_first" in batch:
+            return {
+                **progress,
+                "decide_first": batch["decide_first"],
+                "next": "Decide these papers with library_decide first (one call for all).",
+            }
+        if not batch["papers"]:
+            return {**progress, "papers": [], "next": "No candidates left: screening is done."}
+        return {
+            **progress,
+            "papers": [
+                {**Library.brief(p), "abstract": _clip_abstract(p.get("abstract"))}
+                for p in batch["papers"]
+            ],
+            "next": "Decide every paper of this batch with one library_decide call, then ask "
+            "for the next batch.",
+        }
+
     def decide(self, context, tool, args):
         counts = self.library.decide(args["decisions"])
         reply = {"counts": counts}
@@ -527,6 +569,7 @@ class RunTools:
             (SEARCH_ARXIV, self.search("arxiv")),
             (LIBRARY_LIST, self.list_papers),
             (LIBRARY_GET, self.get_papers),
+            (NEXT_CANDIDATES, self.next_candidates),
             (LIBRARY_DECIDE, self.decide),
             (EXCLUDE_REMAINING, self.exclude_remaining),
             (LIBRARY_NOTE, self.note),
@@ -553,6 +596,7 @@ TOOL_NAMES = [
         SEARCH_ARXIV,
         LIBRARY_LIST,
         LIBRARY_GET,
+        NEXT_CANDIDATES,
         LIBRARY_DECIDE,
         EXCLUDE_REMAINING,
         LIBRARY_NOTE,

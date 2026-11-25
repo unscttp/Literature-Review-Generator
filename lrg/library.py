@@ -196,6 +196,12 @@ class Library:
                     "candidate": "candidate",
                 }[decision["decision"]]
                 paper["reason"] = _clip(decision.get("reason") or "", 300)
+                # Put back to candidate on purpose ("unclear"): leaves the current
+                # screening batch and comes again at the end of the queue.
+                if decision["decision"] == "candidate":
+                    paper["deferred"] = True
+                else:
+                    paper.pop("deferred", None)
             self._save()
             return self.counts()
 
@@ -226,6 +232,33 @@ class Library:
                 for theme in paper.get("themes") or []:
                     themes.setdefault(theme, []).append(paper["id"])
             return {"themes": themes}
+
+    def next_batch(self, size: int) -> dict:
+        """The screening queue: the next ``size`` undecided candidates.
+
+        The batch handed out last must be decided first; until then the same
+        papers are named again. Decisions are saved batch by batch, so screening
+        a large pool never depends on what the model still remembers.
+        """
+        with self._lock:
+            papers = {p["id"]: p for p in self._data["papers"]}
+            open_ids = [
+                i
+                for i in self._data.get("screening_batch", [])
+                if i in papers
+                and papers[i]["status"] == "candidate"
+                and not papers[i].get("deferred")
+            ]
+            if open_ids:
+                return {"decide_first": open_ids}
+            candidates = [p for p in self._data["papers"] if p["status"] == "candidate"]
+            fresh = [p for p in candidates if not p.get("deferred")]
+            batch = (fresh or candidates)[:size]  # deferred papers come last
+            for paper in batch:
+                paper.pop("deferred", None)
+            self._data["screening_batch"] = [p["id"] for p in batch]
+            self._save()
+            return {"papers": copy.deepcopy(batch)}
 
     def full(self, paper_id: str) -> dict:
         """One paper for the model: everything, with the abstract cut to a sane length."""

@@ -21,6 +21,9 @@
     "write": 0.4,
     "review": 0.2
   },
+  "steps_per_candidate": {
+    "screen": 0.12
+  },
   "defaults": {
     "language": "en",
     "style": "apa",

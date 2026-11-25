@@ -188,15 +188,20 @@ class RunService:
 
     # -- files -------------------------------------------------------------------
 
-    def step_limits(self, target_papers: int) -> dict[str, int]:
-        """Each stage's step limit for a review of ``target_papers`` papers: the
-        ``max_steps`` in config/workflow.json plus ``steps_per_paper`` per paper."""
+    def step_limits(self, target_papers: int, candidates: int | None = None) -> dict[str, int]:
+        """Each stage's step limit: its ``max_steps`` in config/workflow.json plus
+        ``steps_per_paper`` per paper to include. Stages that work through the
+        whole candidate pool (screening) get at least ``steps_per_candidate`` per
+        candidate actually found, which can be far more than the target."""
         per_paper = self.settings.get("steps_per_paper", {})
-        return {
-            node["id"]: node["react"]["max_steps"]
-            + math.ceil(per_paper.get(node["id"], 0) * target_papers)
-            for node in self.workflow_document["nodes"]
-        }
+        per_candidate = self.settings.get("steps_per_candidate", {})
+        limits = {}
+        for node in self.workflow_document["nodes"]:
+            extra = math.ceil(per_paper.get(node["id"], 0) * target_papers)
+            if candidates is not None:
+                extra = max(extra, math.ceil(per_candidate.get(node["id"], 0) * candidates))
+            limits[node["id"]] = node["react"]["max_steps"] + extra
+        return limits
 
     def call_budget(self, target_papers: int) -> dict:
         """The most model calls the stages may make, for the new-review form."""
@@ -207,11 +212,14 @@ class RunService:
             "skill_graph": self.settings["engine"].get("graph_max_steps", 100),
         }
 
-    def workflow(self, request: dict | None = None) -> WorkflowDefinition:
-        """The workflow, with the step limits for ``request``'s number of papers."""
+    def workflow(
+        self, request: dict | None = None, candidates: int | None = None
+    ) -> WorkflowDefinition:
+        """The workflow, with the step limits for ``request``'s number of papers
+        (and the number of candidates in the library, once there are any)."""
         document = copy.deepcopy(self.workflow_document)
         if request is not None:
-            limits = self.step_limits(request["target_papers"])
+            limits = self.step_limits(request["target_papers"], candidates)
             for node in document["nodes"]:
                 node["react"]["max_steps"] = limits[node["id"]]
                 if not request.get("design_graphs", True) and node.get("allow_create_graph"):
@@ -323,6 +331,8 @@ class RunService:
             engine.task_pool.add(task)
             while ready := engine.task_pool.ready():
                 for ready_task, execution in ready:
+                    # Step limits as the stage starts: screening is sized by the pool.
+                    workflow = self.workflow(record["request"], tools.library.counts()["candidate"])
                     engine.run_execution(workflow, ready_task, execution)
                     self._save_task(run_id, task)
             self._finish(run_id, task, tools, state)
@@ -347,13 +357,11 @@ class RunService:
         elif state.cancelled:
             self._update(run_id, status="cancelled", title=title)
         else:
-            errors = [e.error for e in task.executions if e.status == "failed" and e.error]
-            self._update(
-                run_id,
-                status="failed",
-                title=title,
-                error=errors[-1] if errors else "The run failed.",
-            )
+            failed = [e for e in task.executions if e.status == "failed" and e.error]
+            error = failed[-1].error if failed else "The run failed."
+            if failed:
+                error += "\n" + stage_diagnosis(task, failed[-1])
+            self._update(run_id, status="failed", title=title, error=error)
 
     def _start(self, run_id: str, *, retry: bool = False) -> None:
         state = self._state(run_id)
@@ -608,6 +616,37 @@ def skill_graphs(skills_dir: Path, bundled_dir: Path) -> list[dict]:
             )
         skills.append({"name": name, "graphs": graphs})
     return skills
+
+
+def stage_diagnosis(task: Task, execution) -> str:
+    """What a failed stage did, so the failure explains itself: its tool calls by
+    name (and how many failed), answers that were not accepted, the last error."""
+    calls: dict[str, list[int]] = {}
+    names: dict[str, str] = {}
+    rejected, last_error = 0, None
+    for event in task.events:
+        if event.get("execution_id") != execution.id:
+            continue
+        kind, details = event["type"], event["details"]
+        if kind == "tool.requested":
+            name = str(details.get("action", "")).removeprefix("tool:")
+            names[event["id"]] = name
+            calls.setdefault(name, [0, 0])[0] += 1
+        elif kind == "tool.failed":
+            name = names.get(details.get("call_id"), "?")
+            calls.setdefault(name, [0, 0])[1] += 1
+            last_error = f"{name}: {details.get('error_type')}: {details.get('error')}"
+        elif kind == "react.result_rejected":
+            rejected += 1
+    used = ", ".join(
+        f"{name} ×{count}" + (f" ({failed} failed)" if failed else "")
+        for name, (count, failed) in sorted(calls.items(), key=lambda item: -item[1][0])
+    )
+    text = f"What the {execution.node_id} stage did: {used or 'no tool calls'}"
+    text += f"; answers not accepted: {rejected}."
+    if last_error:
+        text += f" Last tool error: {_short(last_error, 300)}"
+    return text
 
 
 def run_stats(task: Task) -> dict:

@@ -4,6 +4,7 @@
   "actions": [
     "tool:library.list",
     "tool:library.get",
+    "tool:library.next_candidates",
     "tool:library.decide",
     "tool:library.exclude_remaining"
   ],

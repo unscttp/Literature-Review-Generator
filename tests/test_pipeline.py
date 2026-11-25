@@ -310,6 +310,10 @@ class GateTests(ServiceCase):
         summary = self.approve_scope(service, run["id"])
         self.assertEqual(summary["status"], "failed")
         self.assertIn("still candidates", summary["error"])
+        # The failure says what the stage did.
+        self.assertIn(
+            "What the screen stage did: no tool calls; answers not accepted:", summary["error"]
+        )
         self.assertEqual(summary["counts"]["included"], 0)
         statuses = {n["id"]: n["status"] for n in service.graph(run["id"])["graphs"][0]["nodes"]}
         self.assertEqual(statuses["screen"], "failed")
@@ -428,3 +432,97 @@ class DesignedGraphTests(ServiceCase):
 
         with self.assertRaises(RunError):
             service.create({"topic": "Irony in Austen", "design_graphs": "yes"})
+
+
+class LargePoolTests(ServiceCase):
+    """Screening hundreds of candidates: the queue and the step limit (the 275-paper report)."""
+
+    POOL = 275
+
+    def openalex(self, query, **options):
+        if query != "austen irony":
+            return []
+        return [
+            {
+                "title": f"Irony study {i}",
+                "authors": [f"Ann Example{i}"],
+                "year": 2000 + i % 25,
+                "venue": "Demo Journal",
+                "type": "journal-article",
+                "abstract": "Irony. " * 40,
+                "source": "openalex",
+            }
+            for i in range(self.POOL)
+        ]
+
+    def script(self):
+        from lrg.demo import answer, call, demo_script, last
+
+        script = demo_script()
+        script["search"] = [call("lit.search_openalex", query="austen irony"), answer("275 found")]
+
+        def screen(payload):
+            reply = last(payload)
+            if not reply or "decisions" in str(payload["history"][-1]["action"]):
+                return call("library.next_candidates")
+            if reply.get("papers"):
+                return call(
+                    "library.decide",
+                    decisions=[
+                        {
+                            "id": p["id"],
+                            "decision": "include" if p["id"] in ("P1", "P2") else "exclude",
+                            "reason": "on topic" if p["id"] in ("P1", "P2") else "E1",
+                        }
+                        for p in reply["papers"]
+                    ],
+                )
+            return answer("2 included.")
+
+        script["screen"] = [screen]
+        return script
+
+    def test_screening_a_large_pool_batch_by_batch(self):
+        service = self.make_service(self.script(), openalex=self.openalex)
+        run = service.create({"topic": "Irony in Austen", "target_papers": 25})
+        summary = self.finish(run["id"])
+        self.assertEqual(summary["status"], "completed", summary.get("error"))
+        self.assertEqual((summary["counts"]["included"], summary["counts"]["excluded"]), (2, 273))
+        screen_calls = [n for n, _ in self.model.calls if n == "screen"]
+        self.assertEqual(len(screen_calls), 2 * 11 + 2)  # 11 batches of 25: fetch + decide
+        # The step limit came from the pool, not from the 25 papers to include.
+        limits = service.step_limits(25, self.POOL)
+        self.assertEqual(limits["screen"], 14 + 33)
+        self.assertGreater(limits["screen"], service.step_limits(25)["screen"])
+
+    def test_the_queue_waits_for_decisions(self):
+        import tempfile
+        from pathlib import Path
+
+        from lrg.tools import RunTools
+
+        with tempfile.TemporaryDirectory() as folder:
+            tools = RunTools(Path(folder), {})
+            tools.library.add(self.openalex("austen irony")[:30], query="q", source="openalex")
+            first = tools.next_candidates(None, None, {})
+            self.assertEqual([p["id"] for p in first["papers"]][:2], ["P1", "P2"])
+            self.assertEqual((len(first["papers"]), first["candidates_left"]), (25, 30))
+            again = tools.next_candidates(None, None, {})
+            self.assertEqual(len(again["decide_first"]), 25)  # decide before the next batch
+            decisions = [{"id": p["id"], "decision": "exclude"} for p in first["papers"][1:]]
+            decisions.append(
+                {"id": "P1", "decision": "candidate", "reason": "unclear: no abstract"}
+            )
+            tools.decide(None, None, {"decisions": decisions})
+            second = tools.next_candidates(None, None, {})
+            self.assertEqual([p["id"] for p in second["papers"]], [f"P{i}" for i in range(26, 31)])
+            tools.decide(
+                None,
+                None,
+                {"decisions": [{"id": p["id"], "decision": "exclude"} for p in second["papers"]]},
+            )
+            deferred = tools.next_candidates(None, None, {})  # the unclear one comes last
+            self.assertEqual([p["id"] for p in deferred["papers"]], ["P1"])
+            tools.decide(None, None, {"decisions": [{"id": "P1", "decision": "include"}]})
+            done = tools.next_candidates(None, None, {})
+            self.assertEqual((done["papers"], done["candidates_left"]), ([], 0))

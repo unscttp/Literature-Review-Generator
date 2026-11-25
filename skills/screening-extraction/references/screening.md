@@ -18,3 +18,7 @@
   the topic (an "irony" paper in chemistry). Exclude them with `E1`.
 - **Uncertain.** Leave a paper as `candidate` only while you are still
   screening; at the end every candidate is included or excluded.
+- **Large pools.** With hundreds of candidates, screen batch by batch with
+  `library_next_candidates` and decide each batch at once. When enough
+  papers are included, `library_exclude_remaining` closes the rest with one
+  reason (`E6: lower priority`); say so in the method section.

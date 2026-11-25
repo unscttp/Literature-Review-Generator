@@ -18,10 +18,12 @@ criterion, and every note comes from the paper's record.
 1. Restate the criteria as a short checklist with codes, for example
    `E1 not about the topic`, `E2 wrong population`, `E3 not a research
    publication`, `E4 outside the years`, `E5 duplicate or superseded`.
-2. Go through the candidates in pages (`library_list` with `status:
-   candidate`, `detail: abstract`, `offset`). Decide many papers per
-   `library_decide` call. Start the reason with the code: `E2: secondary
-   school students`.
+2. Screen with the queue: `library_next_candidates` gives the next 25
+   undecided candidates with their abstracts. Decide all of them with one
+   `library_decide` call, then ask for the next batch. Decide each batch
+   before reading further: with hundreds of candidates, a batch you only read
+   drops out of view, and every call uses a step. Start the reason with the
+   code: `E2: secondary school students`.
 3. Include on the title and abstract when they clearly meet the criteria.
    When the abstract is missing or unclear, read the record (`library_get`);
    if it is still unclear, include it when the title is clearly on topic and

@@ -296,7 +296,7 @@ def demo_script():
         "context": [call("lit.search_openalex", query="regency satire"), answer("1 found")],
         "coverage": [call("library.list"), answer("No gaps.")],
         "screen": [
-            call("library.list", status="candidate", detail="abstract"),
+            call("library.next_candidates"),  # the screening queue
             call(
                 "library.decide",
                 decisions=[
@@ -306,6 +306,7 @@ def demo_script():
                     {"id": "P4", "decision": "exclude", "reason": "E3: computational"},
                 ],
             ),
+            call("library.next_candidates"),  # empty: screening is done
             answer("2 included, 2 excluded."),
         ],
         "extract": [

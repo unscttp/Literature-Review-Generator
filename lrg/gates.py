@@ -47,8 +47,9 @@ def screen_done(tools: RunTools) -> str | None:
         return (
             f"{counts['candidate']} of {counts['total']} papers are still candidates "
             f"({_ids(left)}); {counts['included']} are included and {counts['excluded']} excluded. "
-            "Decide every candidate with library_decide (up to 100 per call); once the papers to "
-            "include are chosen, library_exclude_remaining excludes the rest with one reason."
+            "Screen with the queue: library_next_candidates gives the next batch, decide it with "
+            "one library_decide call, repeat; once enough papers are included, "
+            "library_exclude_remaining excludes the rest with one reason."
         )
     if counts["included"] == 0:
         return (

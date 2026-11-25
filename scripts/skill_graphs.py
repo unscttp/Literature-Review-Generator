@@ -158,9 +158,9 @@ EMPIRICAL_EDUCATION = {
             "title-abstract",
             "Screen titles and abstracts",
             "lrg-screen-only",
-            "Node of the empirical-education screening graph. Screen every candidate: page "
-            "through library_list (status candidate, detail abstract, offset) and decide with "
-            "library_decide, 10-40 papers per call. Reasons start with the code from the "
+            "Node of the empirical-education screening graph. Screen every candidate with the "
+            "queue: library_next_candidates gives the next 25 with abstracts; decide all of them "
+            "with one library_decide call, then ask for the next batch. Reasons start with the code from the "
             "criteria ('E3: position paper'); includes give the design ('include: "
             "quasi-experiment, Year 8'). Leave a paper as candidate with reason 'unclear: ...' "
             "only when the abstract does not show the design or population. Answer with the "

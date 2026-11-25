@@ -104,8 +104,11 @@ Downloaded the ZIP instead of using git? `install.py` fetches DGS by itself.
 
 **How many model calls?** Each stage has a step limit that grows with the
 number of papers to include (`max_steps` in `config/workflow.json` plus
-`steps_per_paper` in `config/settings.json`). The eight stages may make up to
-about 130 calls for 5 papers, 185 for 25 and 330 for 80, plus up to 120 for each
+`steps_per_paper` in `config/settings.json`). Screening works through the
+whole candidate pool, so its limit grows with the candidates the search found
+(`steps_per_candidate`, about one step per eight candidates) when that is more.
+The eight stages may make up to about 130 calls for 5 papers, 185 for 25 and
+330 for 80 (more when the search finds a large pool), plus up to 120 for each
 skill graph a stage runs; the form shows the number for your review. A wide
 field uses much of that budget: with skill graphs a large review can approach
 1000 calls. Check your provider's rate limits and prices, and raise the limits
@@ -123,7 +126,7 @@ may call (`config/allowances/`). DGS checks every tool call against it.
 | --- | --- | --- | --- |
 | 1 | Scope | Research questions, criteria, queries; you approve | `scope.submit`, reads the search skill |
 | 2 | Search | Searches OpenAlex and arXiv; results go into the library | `lit.search_openalex`, `lit.search_arxiv`, `library.list/get`, literature-search skill and its graph |
-| 3 | Screen | Includes or excludes every candidate, with a reason | `library.list/get/decide/exclude_remaining/note`, screening-extraction skill and its graph |
+| 3 | Screen | Includes or excludes every candidate, with a reason | `library.next_candidates/decide/exclude_remaining`, `library.list/get/note`, screening-extraction skill and its graph |
 | 4 | Extract | Notes on method, data, findings, limitations | `library.list/get/note/decide` |
 | 5 | Organize | Themes, comparison, gaps | `library.list/get/tag`, review-organization skill and its graph |
 | 6 | Outline | Sections and the papers each cites | `library.list/get`, `review.set_outline` |
@@ -164,6 +167,18 @@ that only looks finished. **Resume** gives the stage fresh steps. The tools
 hold the same line: only included papers can get notes and themes, be
 planned in the outline or be cited, and `library.exclude_remaining` closes a
 large screening in one call once the papers to include are chosen.
+
+**Screening large pools.** A search can find hundreds of candidates; read
+page by page, they no longer fit in the model's context, and a model that
+reads everything before deciding runs out of steps with nothing decided.
+Screening therefore uses a queue: `library.next_candidates` hands out 25
+undecided candidates with their abstracts and the progress, and hands out the
+next batch only once these are decided (a paper put back to *candidate* comes
+again at the end). Decisions are saved batch by batch, whatever the model
+still remembers.
+
+When a stage fails, the error says what it did: its tool calls by name, how
+many failed, how many answers were not accepted and the last tool error.
 
 **Citations** are built by `lrg/references.py` from the library records
 whenever the report is shown, so the text and the references always agree.
