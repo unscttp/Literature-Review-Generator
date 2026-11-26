@@ -131,7 +131,7 @@ may call (`config/allowances/`). DGS checks every tool call against it.
 | 5 | Organize | Themes, comparison, gaps | `library.list/get/tag`, review-organization skill and its graph |
 | 6 | Outline | Sections and the papers each cites | `library.list/get`, `review.set_outline` |
 | 7 | Write | The sections, citing library ids | `library.list/get`, `review.write_section/read`, review-writing skill and its graph |
-| 8 | Review | Fixes what the check finds, writes the abstract | `review.check/read/write_section/delete_section` |
+| 8 | Review | Fixes what the check finds, writes the abstract | `review.check/read/write_section` |
 
 The stages pass their results on through the task's data (`/stages/<id>`);
 the library, the outline and the sections are files in the run's folder

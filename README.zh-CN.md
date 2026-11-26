@@ -96,7 +96,7 @@ python run.py --demo
 | 5 | 组织 | 主题、比较、研究空白 | `library.list/get/tag`，组织综述技能及其示例图 |
 | 6 | 提纲 | 各章节及其引用的文献 | `library.list/get`、`review.set_outline` |
 | 7 | 撰写 | 撰写各章节，按文献库编号引用 | `library.list/get`、`review.write_section/read`，撰写综述技能及其示例图 |
-| 8 | 审校 | 修正检查发现的问题，撰写摘要 | `review.check/read/write_section/delete_section` |
+| 8 | 审校 | 修正检查发现的问题，撰写摘要 | `review.check/read/write_section` |
 
 各阶段通过任务数据（`/stages/<id>`）传递结果；文献库、提纲和章节是本次运行目录（`data/runs/<id>/`）中的文件。
 只有第 2 阶段可以访问网络，而且只能访问学术检索接口。任何阶段都不能读写其他文件。

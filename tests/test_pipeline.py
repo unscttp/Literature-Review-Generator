@@ -354,6 +354,9 @@ class GateTests(ServiceCase):
         summary = self.approve_scope(service, run["id"])
         self.assertEqual(summary["status"], "failed")
         self.assertIn("missing_abstract", summary["error"])
+        self.assertIn(
+            "write it now with review_write_section, section_id 'abstract'", summary["error"]
+        )
         self.assertFalse(service.report(run["id"])["check"]["complete"])
 
 
@@ -546,3 +549,56 @@ class LargePoolTests(ServiceCase):
         # Each stage's tokens appear in the viewer.
         nodes = {n["id"]: n for n in service.graph(run["id"])["graphs"][0]["nodes"]}
         self.assertGreater(nodes["screen"]["tokens"], 0)
+
+
+class ReviewToolTests(ServiceCase):
+    def test_openings_and_blocking_issues(self):
+        import tempfile
+        from pathlib import Path
+
+        from lrg.tools import RunTools
+
+        with tempfile.TemporaryDirectory() as folder:
+            tools = RunTools(Path(folder), {})
+            tools.library.add([{"title": "A"}], query="q", source="openalex")
+            tools.decide(None, None, {"decisions": [{"id": "P1", "decision": "include"}]})
+            tools.set_outline(
+                None,
+                None,
+                {
+                    "sections": [
+                        {"id": "intro", "title": "Introduction", "purpose": "x", "papers": ["P1"]},
+                        {"id": "themes", "title": "Themes", "purpose": "y"},
+                    ]
+                },
+            )
+            long_text = (
+                "First sentence of the introduction [P1]. " + "More text follows here. " * 40
+            )
+            tools.write_section(
+                None, None, {"section_id": "intro", "title": "Introduction", "content": long_text}
+            )
+            reply = tools.read_sections(None, None, {"detail": "openings"})
+            [intro] = reply["sections"]
+            self.assertTrue(intro["opening"].startswith("First sentence of the introduction [P1]."))
+            self.assertLess(len(intro["opening"]), 420)
+            self.assertEqual(
+                reply["blocking_issues"],
+                [
+                    "missing_abstract: write it now with review_write_section, section_id 'abstract'",
+                    "missing_sections: write themes",
+                ],
+            )
+            self.assertIn(
+                "blocking_issues", tools.read_sections(None, None, {"section_id": "intro"})
+            )
+            tools.write_section(
+                None, None, {"section_id": "themes", "title": "Themes", "content": "x " * 50}
+            )
+            tools.write_section(
+                None, None, {"section_id": "abstract", "title": "Abstract", "content": "y " * 50}
+            )
+            self.assertEqual(tools.read_sections(None, None, {})["blocking_issues"], [])
+            from lrg.tools import TOOL_NAMES
+
+            self.assertNotIn("review.delete_section", TOOL_NAMES)

@@ -7,7 +7,6 @@
     "tool:review.outline",
     "tool:review.read",
     "tool:review.write_section",
-    "tool:review.delete_section",
     "tool:review.check"
   ],
   "max_tool_risk": "low",

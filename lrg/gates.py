@@ -124,9 +124,9 @@ def check(tools: RunTools) -> dict:
 
 
 def _describe(issue: dict) -> str:
-    detail = issue.get("ids") or issue.get("sections") or []
-    where = f" in {issue['section']}" if issue.get("section") else ""
-    return f"{issue['kind']}{where}" + (f": {', '.join(detail[:MAX_IDS])}" if detail else "")
+    from .tools import describe_issue
+
+    return describe_issue(issue)
 
 
 GATES: dict[str, Callable[[RunTools], str | None]] = {

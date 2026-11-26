@@ -289,16 +289,12 @@ READ_SECTIONS = ToolDefinition(
     "review.read",
     "low",
     description=(
-        "Without section_id: the sections written so far (id, title, words, cited papers). "
-        "With section_id: that section's text."
+        "Without section_id: the sections written so far (id, title, words, cited papers); "
+        "with detail 'openings' also the opening sentences of each, enough to write the "
+        "abstract without reading every section. With section_id: that section's text. "
+        "The reply lists the blocking issues still open."
     ),
-    input_schema=_object({"section_id": _SECTION}),
-)
-DELETE_SECTION = ToolDefinition(
-    "review.delete_section",
-    "low",
-    description="Delete a section.",
-    input_schema=_object({"section_id": _SECTION}, ["section_id"]),
+    input_schema=_object({"section_id": _SECTION, "detail": {"enum": ["list", "openings"]}}),
 )
 CHECK_REVIEW = ToolDefinition(
     "review.check",
@@ -309,6 +305,29 @@ CHECK_REVIEW = ToolDefinition(
     ),
     input_schema=_object({}),
 )
+
+
+def _opening(text: str, limit: int = 400) -> str:
+    """The first sentences of a section, up to ``limit`` characters."""
+    text = " ".join(line for line in (text or "").splitlines() if not line.startswith("#"))
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    end = max(cut.rfind(". "), cut.rfind("。"), cut.rfind("! "), cut.rfind("? "))
+    return (cut[: end + 1] if end > limit // 3 else cut.rstrip()) + " …"
+
+
+def describe_issue(issue: dict) -> str:
+    """A blocking issue as an instruction (tool replies and the stage check)."""
+    kind = issue["kind"]
+    if kind == "missing_abstract":
+        return "missing_abstract: write it now with review_write_section, section_id 'abstract'"
+    if kind == "missing_sections":
+        return "missing_sections: write " + ", ".join(issue.get("sections", []))
+    detail = issue.get("ids") or []
+    where = f" in '{issue['section']}'" if issue.get("section") else ""
+    return f"{kind}{where}: {', '.join(detail[:15])}" if detail else f"{kind}{where}"
 
 
 def _clip_abstract(text: str | None, limit: int = 700) -> str:
@@ -545,16 +564,26 @@ class RunTools:
         written = next(s for s in summary if s["id"] == args["section_id"])
         return {"saved": args["section_id"], "words": written["words"], "sections": summary}
 
+    def blocking_issues(self) -> list[str]:
+        """What still keeps the review from being finished, as instructions."""
+        result = check(self.library, self.sections, [s["id"] for s in self.outline()])
+        return [describe_issue(issue) for issue in result["issues"] if issue["blocking"]]
+
     def read_sections(self, context, tool, args):
         if args.get("section_id"):
             section = next((s for s in self.sections.all() if s["id"] == args["section_id"]), None)
             if section is None:
                 raise KeyError(f"No section {args['section_id']!r}.")
-            return section
-        return {"sections": self.sections.summary(), "outline": [s["id"] for s in self.outline()]}
-
-    def delete_section(self, context, tool, args):
-        return {"sections": self.sections.delete(args["section_id"])}
+            reply = dict(section)
+        else:
+            sections = self.sections.summary()
+            if args.get("detail") == "openings":
+                texts = {s["id"]: s["content"] for s in self.sections.all()}
+                for section in sections:
+                    section["opening"] = _opening(texts[section["id"]])
+            reply = {"sections": sections, "outline": [s["id"] for s in self.outline()]}
+        reply["blocking_issues"] = self.blocking_issues()
+        return reply
 
     def check(self, context, tool, args):
         return check(self.library, self.sections, [s["id"] for s in self.outline()])
@@ -578,7 +607,6 @@ class RunTools:
             (GET_OUTLINE, self.get_outline),
             (WRITE_SECTION, self.write_section),
             (READ_SECTIONS, self.read_sections),
-            (DELETE_SECTION, self.delete_section),
             (CHECK_REVIEW, self.check),
         ]
         for definition, handler in handlers:
@@ -651,11 +679,18 @@ SUMMARIES = {
     "review.outline": lambda a, r: f"read the outline ({len(r.get('sections') or [])} sections)",
     "review.write_section": lambda a, r: f"wrote '{a.get('section_id')}' ({r.get('words')} words)",
     "review.read": lambda a, r: (
-        f"read '{a['section_id']}'"
-        if a.get("section_id")
-        else f"listed {len(r.get('sections') or [])} sections"
+        (
+            f"read '{a['section_id']}'"
+            if a.get("section_id")
+            else f"listed {len(r.get('sections') or [])} sections"
+            + (" with openings" if a.get("detail") == "openings" else "")
+        )
+        + (
+            f"; still open: {'; '.join(r['blocking_issues'])[:120]}"
+            if r.get("blocking_issues")
+            else ""
+        )
     ),
-    "review.delete_section": lambda a, r: f"deleted '{a.get('section_id')}'",
     "review.check": _check_line,
 }
 
@@ -677,7 +712,6 @@ TOOL_NAMES = [
         GET_OUTLINE,
         WRITE_SECTION,
         READ_SECTIONS,
-        DELETE_SECTION,
         CHECK_REVIEW,
     )
 ]
