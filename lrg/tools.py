@@ -582,10 +582,82 @@ class RunTools:
             (CHECK_REVIEW, self.check),
         ]
         for definition, handler in handlers:
-            module.register(definition, handler)
+            module.register(definition, handler, summary=SUMMARIES.get(definition.name))
         for name in SKILLS:
             register_skill(module, Path(skills_dir) / name)
         return module
+
+
+# -- one line per call for the archived-step index of prompts (DGS workflow_history) --
+
+
+def _ids(ids) -> str:
+    ids = list(ids or [])
+    if len(ids) > 6:
+        return f"{ids[0]}-{ids[-1]} ({len(ids)} papers)"
+    return ", ".join(ids)
+
+
+def _search_line(args, result):
+    if result.get("error"):
+        return None
+    return f"'{args.get('query')}': {result.get('found', 0)} found, {result.get('new', 0)} new"
+
+
+def _batch_line(args, result):
+    if result.get("decide_first"):
+        return f"asked to decide {_ids(result['decide_first'])} first"
+    papers = [p["id"] for p in result.get("papers") or []]
+    if not papers:
+        return "queue empty: screening done"
+    return f"batch {_ids(papers)}; {result.get('candidates_left')} candidates left"
+
+
+def _decide_line(args, result):
+    decisions = args.get("decisions") or []
+    included = sum(d.get("decision") == "include" for d in decisions)
+    counts = result.get("counts") or {}
+    return (
+        f"{len(decisions)} decisions ({included} include); now {counts.get('included')} included, "
+        f"{counts.get('excluded')} excluded, {counts.get('candidate')} candidates"
+    )
+
+
+def _check_line(args, result):
+    if result.get("ok"):
+        return "check passed"
+    return "issues: " + ", ".join(sorted({i["kind"] for i in result.get("issues", [])}))
+
+
+SUMMARIES = {
+    "scope.submit": lambda a, r: (
+        "approved" if r.get("approved") else f"sent back: {str(r.get('feedback'))[:100]}"
+    ),
+    "lit.search_openalex": _search_line,
+    "lit.search_arxiv": _search_line,
+    "library.list": lambda a, r: (
+        f"listed {len(r.get('papers') or [])} of {r.get('matching')} "
+        f"({a.get('status', 'all')}, offset {a.get('offset', 0)})"
+    ),
+    "library.get": lambda a, r: f"read {_ids(a.get('ids'))}",
+    "library.next_candidates": _batch_line,
+    "library.decide": _decide_line,
+    "library.exclude_remaining": lambda a, r: (
+        f"excluded the {r.get('excluded')} remaining candidates"
+    ),
+    "library.note": lambda a, r: f"notes for {_ids(r.get('saved'))}",
+    "library.tag": lambda a, r: f"themes for {_ids([x['id'] for x in a.get('assignments') or []])}",
+    "review.set_outline": lambda a, r: f"outline saved: {', '.join(r.get('saved') or [])}",
+    "review.outline": lambda a, r: f"read the outline ({len(r.get('sections') or [])} sections)",
+    "review.write_section": lambda a, r: f"wrote '{a.get('section_id')}' ({r.get('words')} words)",
+    "review.read": lambda a, r: (
+        f"read '{a['section_id']}'"
+        if a.get("section_id")
+        else f"listed {len(r.get('sections') or [])} sections"
+    ),
+    "review.delete_section": lambda a, r: f"deleted '{a.get('section_id')}'",
+    "review.check": _check_line,
+}
 
 
 TOOL_NAMES = [

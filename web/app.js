@@ -762,6 +762,7 @@
       nodeDescription(graph, node) ? h("p", { class: "muted" }, nodeDescription(graph, node)) : null,
       h("p", { class: "small muted" },
         `${node.attempts || 0} ${t("viewer.attempts")} · ${node.decisions || 0} ${t("viewer.decisions")} · ${node.tool_calls || 0} ${t("viewer.toolCalls")}`,
+        node.tokens ? ` · ${node.tokens.toLocaleString(I18n.language)} ${t("run.tokens")}` : "",
         node.allowance ? ` · ${t("viewer.allowance")}: ${node.allowance}` : ""),
       node.error ? h("p", { class: "notice error" }, node.error) : null,
       graph.parent ? null : h("h3", {}, t("viewer.stageOutput")),

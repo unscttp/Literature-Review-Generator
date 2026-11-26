@@ -47,13 +47,15 @@ def _activity(task: Task, execution_id: str) -> dict | None:
     return activity
 
 
-def _counts(task: Task, execution_id: str) -> tuple[int, int]:
-    decisions = tools = 0
+def _counts(task: Task, execution_id: str) -> tuple[int, int, int]:
+    decisions = tools = tokens = 0
     for event in list(task.events):
         if event["execution_id"] == execution_id:
-            decisions += event["type"] == "llm.completed"
+            if event["type"] == "llm.completed":
+                decisions += 1
+                tokens += event["details"].get("tokens") or 0
             tools += event["type"] in {"tool.completed", "tool.failed"}
-    return decisions, tools
+    return decisions, tools, tokens
 
 
 def _nodes(definitions: list[dict], task: Task | None) -> list[dict]:
@@ -72,16 +74,18 @@ def _nodes(definitions: list[dict], task: Task | None) -> list[dict]:
             "attempts": 0,
             "decisions": 0,
             "tool_calls": 0,
+            "tokens": 0,
             "activity": None,
         }
         if execution is not None:
             status = STATUS.get(execution.status, execution.status)
-            decisions, tools = _counts(task, execution.id)
+            decisions, tools, tokens = _counts(task, execution.id)
             view.update(
                 status=status,
                 attempts=execution.attempt,
                 decisions=decisions,
                 tool_calls=tools,
+                tokens=tokens,
                 error=execution.error,
             )
             if status in {"running", "waiting"}:

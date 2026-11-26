@@ -25,7 +25,7 @@ from pathlib import Path
 STATUSES = ("candidate", "included", "excluded")
 NOTE_FIELDS = ("summary", "method", "data", "findings", "limitations", "notes")
 NOTE_CHARS = 2000
-ABSTRACT_CHARS = 2500
+ABSTRACT_CHARS = 1200
 BRIEF_ABSTRACT_CHARS = 300
 
 

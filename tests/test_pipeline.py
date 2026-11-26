@@ -526,3 +526,23 @@ class LargePoolTests(ServiceCase):
             tools.decide(None, None, {"decisions": [{"id": "P1", "decision": "include"}]})
             done = tools.next_candidates(None, None, {})
             self.assertEqual((done["papers"], done["candidates_left"]), ([], 0))
+
+    def test_screening_prompts_carry_an_index_of_older_steps(self):
+        service = self.make_service(self.script(), openalex=self.openalex)
+        run = service.create({"topic": "Irony in Austen", "target_papers": 25})
+        self.assertEqual(self.finish(run["id"])["status"], "completed")
+        last = [payload for node, payload in self.model.payloads if node == "screen"][-1]
+        # Screening sends only its newest 2 steps in full (react.full_steps in workflow.json):
+        # an earlier batch is decided and saved, its abstracts are no longer needed.
+        self.assertEqual(len(last["history"]), 2)
+        lines = last["history_index"]["steps"]
+        self.assertTrue(lines[0].startswith("#1-#10: called library.next_candidates ×5"))
+        self.assertEqual(
+            lines[-1],
+            "#21 library.next_candidates - batch P251-P275 (25 papers); 25 candidates left",
+        )
+        offered = {t["name"] for t in last["available_tools"]}
+        self.assertIn("history.read", offered)
+        # Each stage's tokens appear in the viewer.
+        nodes = {n["id"]: n for n in service.graph(run["id"])["graphs"][0]["nodes"]}
+        self.assertGreater(nodes["screen"]["tokens"], 0)

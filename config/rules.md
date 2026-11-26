@@ -21,6 +21,10 @@ stage started). Your answer becomes this stage's result, which later stages read
   with what you have.
 - When a tool returns an error, read it and change your call; do not repeat the
   same call.
+- Only your newest steps are shown in full; older ones appear as a numbered
+  index (failed steps always in full). Your work is saved in the library and
+  the text, so you rarely need old steps; when you do, read them with
+  history_read by number instead of repeating the call.
 - Your answer is for the next stages: short and structured, with counts and ids.
 - Your stage's answer is accepted only when its work is done in the library
   and the text (every candidate screened, every included paper noted, and so

@@ -27,7 +27,7 @@ VENV = ROOT / ".venv"
 DGS = ROOT / "third_party" / "dgs"
 # The DGS version this app is tested with (the submodule's commit).
 DGS_REPOSITORY = "https://github.com/unscttp/Directed-Growing-Sheet"
-DGS_COMMIT = "079c1beccb27f8799e6b87ee3084447b1b6c9a0a"
+DGS_COMMIT = "bf0d9b9a88678e5ac47508a6673f853f54787697"
 
 
 def python_in_venv() -> Path:

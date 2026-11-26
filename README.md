@@ -177,6 +177,19 @@ next batch only once these are decided (a paper put back to *candidate* comes
 again at the end). Decisions are saved batch by batch, whatever the model
 still remembers.
 
+**Keeping long stages small.** Every model call sends the stage's context
+again, so long stages used to dominate the token count. With DGS 1.3 a call
+carries only the stage's newest steps in full (5 by default; 2 in Screen,
+whose earlier batches are decided and saved) and every failed step; older
+steps become a numbered index, one line each, folded per ten
+(`react_full_steps` and `react_index_fold` in `config/settings.json`, and
+`react.full_steps` per stage in `config/workflow.json`). Each tool writes its
+own index line ("library.decide - 25 decisions (2 include); now 2 included,
+48 excluded, 225 candidates"), and the model reads an old step back with
+`history_read` when it needs the details. In a test review with 275
+candidates this halved the characters sent; the stage panel of the viewer
+shows each stage's tokens.
+
 When a stage fails, the error says what it did: its tool calls by name, how
 many failed, how many answers were not accepted and the last tool error.
 

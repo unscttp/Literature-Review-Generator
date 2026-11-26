@@ -8,6 +8,8 @@
     "prompt_max_value_chars": 16000,
     "prompt_budget_chars": 60000,
     "prompt_max_events": 60,
+    "react_full_steps": 5,
+    "react_index_fold": 10,
     "graph_creation_human_check": true,
     "graph_max_steps": 120,
     "knowledge_consolidate_on_finish": false,

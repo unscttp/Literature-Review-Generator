@@ -365,6 +365,7 @@ class ScriptedModel:
         self.delay = delay
         self.calls = []
         self.tools = []  # (node, tool names it was offered), for the tests
+        self.payloads = []  # (node, prompt payload), for the tests
 
     def __call__(self, messages):
         if self.delay:
@@ -375,6 +376,9 @@ class ScriptedModel:
         node = payload["node"]["id"]
         self.calls.append((node, messages[0]["content"]))
         self.tools.append((node, [tool["name"] for tool in payload.get("available_tools") or []]))
+        self.payloads.append((node, payload))
         steps = self.script[node]
-        step = steps[min(len(payload.get("history") or []), len(steps) - 1)]
+        # Steps taken so far: those shown plus those archived behind the index.
+        taken = len(payload.get("history") or []) + payload.get("history_omitted_older_steps", 0)
+        step = steps[min(taken, len(steps) - 1)]
         return step(payload) if callable(step) else step
